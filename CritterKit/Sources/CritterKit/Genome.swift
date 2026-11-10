@@ -34,6 +34,10 @@ public struct Palette: Codable, Equatable, Sendable {
         Palette(name: "Butter", body: 0xFFD66B, belly: 0xFFF1C4, shade: 0xF5B83D, stage: 0xFFF6D9),
         Palette(name: "Sky", body: 0x8EC9FF, belly: 0xD6ECFF, shade: 0x5AA9F0, stage: 0xE4F2FF),
         Palette(name: "Peach", body: 0xFFB38A, belly: 0xFFE0CC, shade: 0xF2956A, stage: 0xFFEDE2),
+        Palette(name: "Tangerine", body: 0xFF9550, belly: 0xFFE2CC, shade: 0xEB7432, stage: 0xFFEADF),
+        Palette(name: "Grape", body: 0xA285EE, belly: 0xE6DCFF, shade: 0x8563DE, stage: 0xF0EAFF),
+        Palette(name: "Leaf", body: 0x8FD16B, belly: 0xE0F5D1, shade: 0x6DB64A, stage: 0xEAF7E2),
+        Palette(name: "Cherry", body: 0xFF6F86, belly: 0xFFD8DF, shade: 0xE5506A, stage: 0xFFE8EC),
     ]
 }
 

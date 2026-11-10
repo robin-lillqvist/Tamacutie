@@ -90,5 +90,26 @@ final class ScreenSnapshotTests: XCTestCase {
         try render("conditions", row, size: CGSize(width: 1180, height: 260))
     }
 
+    /// Twelve critters in different moods, to judge the art style at a glance.
+    func testGallery() throws {
+        let moods: [Mood] = [.content, .happy, .excited, .content, .hungry, .sad, .content, .excited, .sleepy, .content, .happy, .ignoring]
+        let grid = VStack(spacing: 6) {
+            ForEach(0..<2, id: \.self) { row in
+                HStack(spacing: 6) {
+                    ForEach(0..<6, id: \.self) { column in
+                        let index = row * 6 + column
+                        let genome = Genome(seed: UInt64(index * 7919 + 11))
+                        CritterView(genome: genome, expression: moods[index])
+                            .frame(width: 180, height: 180)
+                            .background(RoundedRectangle(cornerRadius: 24).fill(Color(hex: genome.palette.stage)))
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.cream)
+        try render("gallery", grid, size: CGSize(width: 1180, height: 410))
+    }
+
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
 }
