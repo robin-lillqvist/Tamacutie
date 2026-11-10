@@ -26,3 +26,10 @@
 - App: 13 tests (`xcodebuild test`) cover the store's real-time persistence and render every screen at iPad size (set TEST_RUNNER_SNAPSHOT_DIR to save PNGs).
 - iPadOS 26 letterboxes landscape-only apps, so every orientation is supported. Portrait works, but the layout is designed for landscape.
 - Deploy is blocked: Xcode has no signed-in Apple account, so it can't create a provisioning profile for se.lillqvist.crittercorner.
+
+# Polish round 1 — make the critter interactive
+- [x] Playground logic in CritterKit (ball physics, fetch state machine, bubbles) + tests
+- [x] Play mode on Home: flick the ball, critter chases/catches/returns it; blow bubbles it jumps to pop
+- [x] Living critter: wanders, walks to bowl/bed by need, faces direction, walk bob, eyes follow touch
+- [x] Petting/tickle reactions, haptics, drag food to the mouth (mouth opens when food is near)
+- [x] UI tests that play the game in a landscape simulator and save screenshots

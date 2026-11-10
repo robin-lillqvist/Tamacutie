@@ -45,12 +45,26 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: se.lillqvist.crittercorner.tests
+  CritterCornerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - CritterCornerUITests
+    dependencies:
+      - target: CritterCorner
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: se.lillqvist.crittercorner.uitests
+        TEST_TARGET_NAME: CritterCorner
 schemes:
   CritterCorner:
     build:
       targets:
         CritterCorner: all
         CritterCornerTests: [test]
+        CritterCornerUITests: [test]
     test:
       targets:
         - CritterCornerTests
+        - CritterCornerUITests

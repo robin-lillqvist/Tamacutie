@@ -57,7 +57,14 @@ struct BathView: View {
         return ZStack(alignment: .topLeading) {
             BathBackdrop(size: size)
 
-            LiveCritterView(genome: pet.genome, expression: step == .done ? .excited : (pet.genome.has(.lovesBaths) || step == .fill ? .happy : .content), weight: pet.weight)
+            LiveCritterView(
+                genome: pet.genome,
+                expression: step == .done ? .excited : (pet.genome.has(.lovesBaths) || step == .fill ? .happy : .content),
+                weight: pet.weight,
+                look: tool.map { CGVector(dx: max(-1, min(1, ($0.x - center.x) / 200)), dy: max(-1, min(1, ($0.y - center.y + 30) / 200))) } ?? .zero,
+                wiggle: tool != nil && step == .dry,
+                blissful: tool != nil && step == .scrub
+            )
                 .frame(width: 300, height: 300)
                 .position(center)
                 .allowsHitTesting(false)

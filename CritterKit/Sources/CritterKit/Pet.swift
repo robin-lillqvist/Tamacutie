@@ -298,13 +298,13 @@ extension Pet {
         return .loved(gain: gain)
     }
 
-    public mutating func play(at now: Date) -> Bool {
+    public mutating func play(at now: Date, fun: Double = 12, energy: Double = 4) -> Bool {
         guard isAlive, !isAsleep, needs.energy >= 5 else { return false }
-        needs.fun += 12
-        needs.energy -= 4
+        needs.fun += fun
+        needs.energy -= energy
         needs.love += 2
         needs.clamp()
-        exercise(by: 0.5)
+        exercise(by: energy / 8)
         touch(now)
         return true
     }

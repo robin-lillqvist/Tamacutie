@@ -70,6 +70,7 @@ struct RootView: View {
     /// `-demoPet YES -screen park` jumps straight to a screen with a pet, for screenshots.
     private func applyDebugLaunchArguments() {
         let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "resetSave") { store.resetForDebug() }
         if defaults.bool(forKey: "demoPet"), store.pet == nil {
             store.perform { state, now in
                 _ = state.adopt(genome: Genome(seed: 2024), name: NameGenerator.name(seed: 2024), now: now)

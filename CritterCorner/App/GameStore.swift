@@ -55,6 +55,16 @@ final class GameStore {
         return result
     }
 
+    #if DEBUG
+    func resetForDebug() {
+        timeOffset = 0
+        defaults.removeObject(forKey: "timeOffset")
+        now = clock()
+        state = GameState(now: now)
+        save()
+    }
+    #endif
+
     func save() {
         try? SaveFile.save(state, to: saveURL)
     }

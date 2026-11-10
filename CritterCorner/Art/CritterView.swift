@@ -8,11 +8,15 @@ struct CritterView: View {
     var weight: Double = Rules.healthyWeight
     var blinking = false
     var halo = false
+    /// Where the eyes look, -1...1 on each axis.
+    var look: CGVector = .zero
+    /// Eyes squeezed shut with joy, e.g. while being petted.
+    var blissful = false
 
     var body: some View {
         Canvas { context, size in
             context.scaleBy(x: size.width / 200, y: size.height / 200)
-            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking, halo: halo, context: context).paint()
+            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, context: context).paint()
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
@@ -26,6 +30,13 @@ struct LiveCritterView: View {
     var expression: Mood = .content
     var weight: Double = Rules.healthyWeight
     var halo = false
+    var walking = false
+    var facingRight = true
+    var look: CGVector = .zero
+    /// Extra tilt in degrees, e.g. leaning into a pat.
+    var lean: Double = 0
+    var wiggle = false
+    var blissful = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -38,11 +49,15 @@ struct LiveCritterView: View {
             case .happy: -abs(sin(t * 2.5)) * 4
             default: 0
             }
-            let sway: Double = expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5
-            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14, halo: halo)
-                .scaleEffect(x: 2 - breath, y: breath, anchor: .bottom)
+            let step = walking ? -abs(sin(t * 11)) * 12 : 0
+            let waddle = walking ? sin(t * 11) * 4 : 0
+            let giggle = wiggle ? sin(t * 40) * 7 : 0
+            let sway: Double = (expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5) + waddle + giggle + lean
+            let eyes = CGVector(dx: facingRight ? look.dx : -look.dx, dy: look.dy)
+            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14, halo: halo, look: eyes, blissful: blissful)
+                .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath, anchor: .bottom)
                 .rotationEffect(.degrees(sway), anchor: .bottom)
-                .offset(y: bounce)
+                .offset(y: bounce + step)
         }
     }
 }
@@ -53,6 +68,7 @@ private struct CritterPainter {
     let weight: Double
     let blinking: Bool
     let halo: Bool
+    let look: CGVector
     var context: GraphicsContext
 
     private var body: Color { Color(hex: genome.palette.body) }
@@ -229,12 +245,14 @@ private struct CritterPainter {
     }
 
     private var eyesClosed: Bool {
-        blinking || [.asleep, .dead, .happy, .ignoring].contains(expression)
+        blinking || [.asleep, .dead, .ignoring].contains(expression)
     }
 
     private func eyes() {
         let centers: [CGFloat] = genome.eyes == .cyclops ? [100] : [100 - 22 * spread, 100 + 22 * spread]
         let lookShift: CGFloat = expression == .ignoring ? -12 : 0
+        let lx = CGFloat(max(-1, min(1, look.dx))) * 5
+        let ly = CGFloat(max(-1, min(1, look.dy))) * 4
         for cx in centers.map({ $0 + lookShift }) {
             let wide: CGFloat = genome.eyes == .cyclops ? 18 : 12
             if eyesClosed {
@@ -252,9 +270,9 @@ private struct CritterPainter {
             }
             if genome.eyes == .cyclops {
                 ellipse(cx, 108, 24, 26, .white)
-                ellipse(cx, 112, 16, 18, .ink)
-                ellipse(cx + 7, 104, 6, 6, .white)
-                ellipse(cx - 5, 119, 2.5, 2.5, .white)
+                ellipse(cx + lx * 1.4, 112 + ly, 16, 18, .ink)
+                ellipse(cx + 7 + lx * 1.4, 104 + ly, 6, 6, .white)
+                ellipse(cx - 5 + lx * 1.4, 119 + ly, 2.5, 2.5, .white)
             } else if expression == .sick {
                 ellipse(cx, 113, 11, 7, .ink)
                 var lid = Path()
@@ -263,9 +281,9 @@ private struct CritterPainter {
                 stroke(lid, body, width: 6)
             } else {
                 let big: CGFloat = expression == .excited ? 1.2 : (expression == .sad ? 0.85 : 1)
-                ellipse(cx, 110, 11 * big, 13 * big, .ink)
-                ellipse(cx + 4 * big, 105, 4.5 * big, 4.5 * big, .white)
-                ellipse(cx - 3 * big, 115, 2 * big, 2 * big, .white)
+                ellipse(cx + lx, 110 + ly, 11 * big, 13 * big, .ink)
+                ellipse(cx + lx + 4 * big, 105 + ly, 4.5 * big, 4.5 * big, .white)
+                ellipse(cx + lx - 3 * big, 115 + ly, 2 * big, 2 * big, .white)
             }
         }
         if [.sad, .hungry, .sick].contains(expression), genome.eyes == .big {

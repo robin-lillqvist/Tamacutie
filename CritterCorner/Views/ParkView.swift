@@ -39,6 +39,8 @@ struct ParkView: View {
     @State private var coinsFound = 0
     @State private var petX: CGFloat = 560
     @State private var petHop = false
+    @State private var petWalking = false
+    @State private var petFacingRight = true
     @State private var bubble: String? = "Let's play!"
     @State private var floating: [FloatingText] = []
     @State private var mounds: [Mound] = []
@@ -82,7 +84,7 @@ struct ParkView: View {
             SpeechBubble(text: "\(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) wants to play!", tailOnLeft: false)
                 .position(x: 940, y: ground - 230)
 
-            LiveCritterView(genome: pet.genome, expression: petHop ? .excited : .happy, weight: pet.weight)
+            LiveCritterView(genome: pet.genome, expression: petHop || petWalking ? .excited : .happy, weight: pet.weight, walking: petWalking, facingRight: petFacingRight, blissful: petHop)
                 .frame(width: 240, height: 240)
                 .offset(y: petHop ? -60 : 0)
                 .position(x: petX, y: ground - 110)
@@ -175,7 +177,7 @@ struct ParkView: View {
         guard flight == nil else { return }
         let launch = Flight(start: .now, from: CGPoint(x: 120, y: 520), to: CGPoint(x: .random(in: 520...880), y: .random(in: 480...560)))
         flight = launch
-        withAnimation(.easeInOut(duration: Flight.duration)) { petX = launch.to.x - 60 }
+        run(to: launch.to.x - 60, duration: Flight.duration)
         Task {
             try? await Task.sleep(for: .seconds(Flight.duration))
             guard flight?.id == launch.id else { return }
@@ -193,10 +195,9 @@ struct ParkView: View {
         let reward = 1 + (combo >= 3 ? 1 : 0)
         coinsFound += reward
         floating.append(FloatingText(text: "+\(reward)", point: point))
-        withAnimation(.spring(duration: 0.3)) {
-            petX = point.x - 40
-            petHop = true
-        }
+        Haptics.success()
+        run(to: point.x - 40, duration: 0.3)
+        withAnimation(.spring(duration: 0.3)) { petHop = true }
         Task {
             try? await Task.sleep(for: .milliseconds(350))
             withAnimation(.spring(duration: 0.3)) { petHop = false }
@@ -220,8 +221,19 @@ struct ParkView: View {
         let reward = [0, 2, 3, 4, 5, 8].randomElement()!
         mounds[index].reward = reward
         coinsFound += reward
-        withAnimation(.spring) { petX = mound.point.x }
+        Haptics.tap()
+        run(to: mound.point.x, duration: 0.6)
         say(reward == 0 ? "Just a flower. Pretty!" : (reward >= 5 ? "Treasure!!" : "Ooh, coins!"))
+    }
+
+    private func run(to x: CGFloat, duration: Double) {
+        petFacingRight = x > petX
+        petWalking = true
+        withAnimation(.easeInOut(duration: duration)) { petX = x }
+        Task {
+            try? await Task.sleep(for: .seconds(duration))
+            petWalking = false
+        }
     }
 
     // MARK: Leaving
