@@ -8,17 +8,17 @@
 - [x] Game state + memorial + persistence (JSON)
 
 ## Phase 2 — App shell
-- [ ] XcodeGen project (iPad only, landscape, iPadOS 17+)
-- [ ] Theme + procedural CritterView (SwiftUI Canvas, matches mockups)
-- [ ] GameStore (real-time ticking, save on background)
+- [x] XcodeGen project (iPad only, landscape, iPadOS 17+)
+- [x] Theme + procedural CritterView (SwiftUI Canvas, matches mockups)
+- [x] GameStore (real-time ticking, save on background)
 
 ## Phase 3 — Screens
-- [ ] Adopt, Home (HUD, petting, feeding, water, sleep, scoop, play)
-- [ ] Market, Bath, Park (fetch + dig), Decor, Body info, Farewell + In Memoriam
-- [ ] Local notifications for low needs
+- [x] Adopt, Home (HUD, petting, feeding, water, sleep, scoop, play)
+- [x] Market, Bath, Park (fetch + dig), Decor, Body info, Farewell + In Memoriam
+- [x] Local notifications for low needs
 
 ## Phase 4 — Ship
-- [ ] App icon
+- [x] App icon
 - [ ] Build, test, install silently on both iPads
 
 ## Review

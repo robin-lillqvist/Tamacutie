@@ -170,9 +170,7 @@ struct DecorView: View {
                     .buttonStyle(SquishyButtonStyle())
                 }
             }
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(items) { item in
+            VGrid(columns: 2, spacing: 12, items: items) { item in
                         Button { chosenItem = item.id } label: {
                             VStack(spacing: 4) {
                                 ItemArt(id: item.id).frame(width: 110, height: 80)
@@ -188,10 +186,9 @@ struct DecorView: View {
                             .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.ink, lineWidth: chosenItem == item.id ? 3 : 0))
                         }
                         .buttonStyle(SquishyButtonStyle())
-                    }
                 }
-                .padding(4)
-            }
+            .padding(4)
+            Spacer(minLength: 0)
             if let chosen {
                 Text("\(chosen.name) · \(chosen.blurb) · +\(chosen.cosiness) cosy")
                     .font(.cute(15, .medium))

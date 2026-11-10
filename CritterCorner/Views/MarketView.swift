@@ -88,6 +88,8 @@ struct MarketView: View {
                 .font(.cute(18)).lineLimit(1).minimumScaleFactor(0.7)
             Text(item.blurb)
                 .font(.cute(14, .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .padding(.horizontal, 10).padding(.vertical, 2)
                 .background(Capsule().fill(Color.peachLight))
             Text("You have \(store.state.count(of: item.id))")

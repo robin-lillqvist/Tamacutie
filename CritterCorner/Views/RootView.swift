@@ -86,10 +86,13 @@ struct RootView: View {
         store.tick()
         guard store.pet?.isAlive == true else { return }
         let missed = store.perform { state, now in state.pet?.registerVisit(at: now) ?? false }
-        if missed, let pet = store.pet {
-            toaster.show("\(pet.pronounName) missed you so much!")
-        } else if let gift = store.perform({ state, now in state.claimDailyGift(now: now) }) {
-            toaster.show("Daily gift: +\(gift) coins!")
+        let gift = store.perform { state, now in state.claimDailyGift(now: now) }
+        let name = store.pet?.pronounName ?? ""
+        switch (missed, gift) {
+        case (true, let gift?): toaster.show("\(name) missed you so much! Daily gift: +\(gift) coins")
+        case (true, nil): toaster.show("\(name) missed you so much!")
+        case (false, let gift?): toaster.show("Daily gift: +\(gift) coins!")
+        case (false, nil): break
         }
     }
 }

@@ -18,8 +18,8 @@ struct DesignCanvas<Content: View>: View {
                 .scaleEffect(scale, anchor: .topLeading)
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .background(background)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .bottom)
+        .background(background.ignoresSafeArea())
     }
 }
 
@@ -133,8 +133,8 @@ struct SpeechBubble: View {
                     topTrailingRadius: 22,
                     style: .continuous
                 ).fill(.white)
+                .shadow(color: Color(hex: 0xF3D3DC), radius: 0, y: 6)
             )
-            .shadow(color: Color(hex: 0xF3D3DC), radius: 0, y: 6)
             .fixedSize()
     }
 }
@@ -281,4 +281,27 @@ struct ToastView: View {
 
 extension Pet {
     var pronounName: String { name.split(separator: " ").first.map(String.init) ?? name }
+}
+
+/// A small eager grid; lazy grids render nothing in snapshot renders and these lists are short.
+struct VGrid<TItem: Identifiable, TCell: View>: View {
+    let columns: Int
+    let spacing: CGFloat
+    let items: [TItem]
+    @ViewBuilder let cell: (TItem) -> TCell
+
+    var body: some View {
+        VStack(spacing: spacing) {
+            ForEach(Array(stride(from: 0, to: items.count, by: columns)), id: \.self) { start in
+                HStack(alignment: .top, spacing: spacing) {
+                    ForEach(items[start..<min(start + columns, items.count)]) { item in
+                        cell(item).frame(maxWidth: .infinity)
+                    }
+                    ForEach(0..<(columns - min(columns, items.count - start)), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
+                }
+            }
+        }
+    }
 }
