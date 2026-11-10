@@ -1,11 +1,11 @@
 # Critter Corner — build plan
 
 ## Phase 1 — Core logic (CritterKit package, fully unit-tested)
-- [ ] Seeded RNG, Genome, name generator
-- [ ] Pet state + real-time simulation (needs decay, sleep, digestion/poop, weight, death)
-- [ ] Social behaviour (missed-you bonus, love-full cooldown)
-- [ ] Economy (wallet, daily gift, piggy bank), catalog, inventory, room layout
-- [ ] Game state + memorial + persistence (JSON)
+- [x] Seeded RNG, Genome, name generator
+- [x] Pet state + real-time simulation (needs decay, sleep, digestion/poop, weight, death)
+- [x] Social behaviour (missed-you bonus, love-full cooldown)
+- [x] Economy (wallet, daily gift, piggy bank), catalog, inventory, room layout
+- [x] Game state + memorial + persistence (JSON)
 
 ## Phase 2 — App shell
 - [ ] XcodeGen project (iPad only, landscape, iPadOS 17+)
