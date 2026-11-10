@@ -67,7 +67,7 @@ public enum WeightStage: String, Codable, CaseIterable, Sendable {
     public var isDangerous: Bool { self == .starving || self == .obese }
 }
 
-public enum Expression: String, Sendable {
+public enum Mood: String, Sendable {
     case dead, asleep, sick, ignoring, excited, happy, content, hungry, sleepy, sad
 }
 
@@ -122,7 +122,7 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
         return now < missedYouUntil
     }
 
-    public func expression(at now: Date) -> Expression {
+    public func expression(at now: Date) -> Mood {
         if !isAlive { return .dead }
         if isAsleep { return .asleep }
         if isSick { return .sick }
