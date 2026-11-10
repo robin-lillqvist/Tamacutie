@@ -17,7 +17,7 @@ enum Reminders {
         func remind(_ id: String, after hours: Double, _ body: String) {
             guard hours > 0 else { return }
             let content = UNMutableNotificationContent()
-            content.title = "Kryphörnan"
+            content.title = "Sötishörnan"
             content.body = body
             content.sound = .default
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60, hours * 3600), repeats: false)

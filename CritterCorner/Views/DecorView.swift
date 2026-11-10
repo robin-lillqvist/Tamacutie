@@ -18,7 +18,7 @@ struct DecorView: View {
         DesignCanvas(background: .lavenderLight) { size in
             let layout = RoomLayout(size: size)
             ZStack(alignment: .topLeading) {
-                RoomBackdrop(size: size)
+                RoomBackdrop(size: size, time: store.now)
                 floorGrid(layout: layout)
 
                 ForEach(store.state.room) { decor in
@@ -213,7 +213,7 @@ struct DecorView: View {
     private func buy(_ item: Item) {
         switch store.perform({ state, _ in state.buy(item.id) }) {
         case .bought: toaster.show("\(item.name) köpt! Tryck på ”Ställ ut”.")
-        case .notEnoughCoins: toaster.show("Inte tillräckligt med mynt än. Ta hand om ditt kryp så tjänar du mer!")
+        case .notEnoughCoins: toaster.show("Inte tillräckligt med mynt än. Ta hand om din sötis så tjänar du mer!")
         case .unknownItem: break
         }
     }

@@ -41,7 +41,9 @@ final class PlaytimeUITests: XCTestCase {
         snap("04-chasing")
         Thread.sleep(forTimeInterval: 3)
         snap("05-delivered")
-        XCTAssertTrue(app.staticTexts["1"].exists || app.staticTexts["2"].exists, "The critter should have fetched the ball")
+        let count = app.staticTexts["play-count"]
+        let fetched = expectation(for: NSPredicate(format: "label != '0'"), evaluatedWith: count)
+        wait(for: [fetched], timeout: 10)
     }
 
     func testBubblesPettingAndFeeding() {

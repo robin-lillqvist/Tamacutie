@@ -49,7 +49,7 @@ struct CritterView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
-        .accessibilityLabel(Text("Ett kryp i färgen \(genome.palette.name.lowercased())"))
+        .accessibilityLabel(Text("En sötis i färgen \(genome.palette.name.lowercased())"))
     }
 }
 

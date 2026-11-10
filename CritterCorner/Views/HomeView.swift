@@ -62,7 +62,7 @@ struct HomeView: View {
     private func room(pet: Pet, layout: RoomLayout) -> some View {
         let size = layout.size
         return ZStack(alignment: .topLeading) {
-            RoomBackdrop(size: size, waterLevel: pet.needs.thirst / 100, foodInBowl: pet.needs.hunger > 50, isNight: store.now.isNight)
+            RoomBackdrop(size: size, waterLevel: pet.needs.thirst / 100, foodInBowl: pet.needs.hunger > 50, time: store.now)
 
             // Touching the empty room makes the critter look at your finger, and blows bubbles in bubble mode.
             Color.clear
@@ -101,11 +101,6 @@ struct HomeView: View {
                 }
             }
 
-            if store.now.isNight && !pet.isAsleep {
-                Color.ink.opacity(0.12)
-                    .frame(width: size.width, height: size.height)
-                    .allowsHitTesting(false)
-            }
 
             critter(pet: pet, layout: layout)
 
@@ -773,6 +768,7 @@ private struct PlayScore: View {
             Text(toy == .ball ? "Apport!" : "Bubbelpop!").font(.cute(20, .bold))
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(toy == .ball ? fetches : pops)").font(.cute(40, .bold)).contentTransition(.numericText())
+                    .accessibilityIdentifier("play-count")
                 Text(toy == .ball ? "hämtningar" : "bubblor").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
             }
             Text(toy == .ball ? "Dra i bollen och släpp för att kasta!" : "Tryck i rummet för att blåsa bubblor!")
@@ -904,7 +900,7 @@ private struct FridgeTray: View {
         let foods = Catalog.items.filter { $0.foodEffect != nil && store.state.count(of: $0.id) > 0 }
         VStack(spacing: 6) {
             if !foods.isEmpty {
-                Text("Dra maten till krypets mun, eller tryck på den")
+                Text("Dra maten till sötisens mun, eller tryck på den")
                     .font(.cute(15, .medium))
                     .foregroundStyle(Color.inkSoft)
             }

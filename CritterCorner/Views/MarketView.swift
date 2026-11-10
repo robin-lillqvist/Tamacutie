@@ -54,7 +54,7 @@ struct MarketView: View {
                 .buttonStyle(SquishyButtonStyle())
                 .accessibilityAddTraits(candidate == aisle ? .isSelected : [])
             }
-            Text("För mycket godis gör ditt kryp runt!")
+            Text("För mycket godis gör din sötis rund!")
                 .font(.cute(15, .medium))
                 .padding(14)
                 .frame(width: 160)
@@ -97,7 +97,7 @@ struct MarketView: View {
             Button {
                 basket[item.id, default: 0] += 1
                 SoundFX.play(.boop)
-                cashierLine = ["Åh, bra val!", "Mums, gott val!", "Något mer?", "Det kommer ditt kryp att älska!"].randomElement()!
+                cashierLine = ["Åh, bra val!", "Mums, gott val!", "Något mer?", "Det kommer din sötis att älska!"].randomElement()!
             } label: {
                 HStack(spacing: 4) {
                     CoinIcon(size: 22)

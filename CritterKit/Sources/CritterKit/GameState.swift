@@ -42,7 +42,7 @@ public struct MemorialEntry: Codable, Equatable, Identifiable, Sendable {
         case .independent: "Gjorde allt på sitt eget sätt."
         case .lovesBaths: "Älskade bubbelbad."
         case .curious: "Nosade upp varenda hemlighet."
-        case nil: "Ett riktigt fint litet kryp."
+        case nil: "En riktigt fin liten sötis."
         }
         let ending = switch cause {
         case .starvation: "Saknade oss medan vi var borta."

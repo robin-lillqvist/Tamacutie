@@ -142,5 +142,15 @@ final class ScreenSnapshotTests: XCTestCase {
         XCTAssertGreaterThan(size.height, 60, "Long lines wrap onto several rows")
     }
 
+    /// The room at dawn, midday, dusk and night: the window and lighting follow the clock.
+    func testRoomThroughTheDay() throws {
+        let calendar = Calendar.current
+        for (name, hour) in [("dawn", 6), ("day", 12), ("dusk", 19), ("night", 23)] {
+            let time = calendar.date(bySettingHour: hour, minute: 30, second: 0, of: .now)!
+            XCTAssertEqual(DayPhase(date: time).rawValue, name)
+            try render("room-\(name)", RoomBackdrop(size: CGSize(width: 1194, height: 830), time: time).frame(width: 1194, height: 830).scaleEffect(1180 / 1194, anchor: .topLeading))
+        }
+    }
+
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
 }

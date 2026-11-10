@@ -58,9 +58,9 @@ struct AdoptView: View {
                         for (x, y) in [(11.0, 17.0), (20, 10), (30, 10), (38, 17)] { c.dot(x, y, 5.5, .coral) }
                     }
                     .frame(width: 48, height: 48)
-                    Text("Kryphörnan").font(.cute(44, .bold))
+                    Text("Sötishörnan").font(.cute(44, .bold))
                 }
-                Text(store.state.memorial.isEmpty ? "Välj ett ägg. Varje kryp som kläcks är helt unikt." : "Redo för en ny vän? Välj ett ägg.")
+                Text(store.state.memorial.isEmpty ? "Välj ett ägg. Varje sötis som kläcks är helt unik." : "Redo för en ny vän? Välj ett ägg.")
                     .font(.cute(20, .medium))
                     .foregroundStyle(Color.inkSoft)
             }

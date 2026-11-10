@@ -17,8 +17,8 @@ struct FarewellView: View {
                         .font(.cute(36, .bold))
                         .multilineTextAlignment(.center)
                     Text(pet.causeOfDeath == .overeating
-                         ? "För mycket godis gjorde \(pet.pronounName)s mage alldeles för rund. Små kryp behöver lagom mycket mat."
-                         : "\(pet.pronounName) var utan mat och vatten alldeles för länge. Små kryp behöver omsorg varje dag.")
+                         ? "För mycket godis gjorde \(pet.pronounName)s mage alldeles för rund. Små sötisar behöver lagom mycket mat."
+                         : "\(pet.pronounName) var utan mat och vatten alldeles för länge. Små sötisar behöver omsorg varje dag.")
                         .font(.cute(21, .medium))
                         .foregroundStyle(Color(hex: 0x5E4D6E))
                         .multilineTextAlignment(.center)
@@ -55,14 +55,14 @@ struct MemoriamView: View {
                         Spacer()
                         VStack(spacing: 2) {
                             Text("Till minne").font(.cute(40, .bold))
-                            Text("För alltid en del av Kryphörnan").font(.cute(18, .medium)).foregroundStyle(Color(hex: 0x5E4D6E))
+                            Text("För alltid en del av Sötishörnan").font(.cute(18, .medium)).foregroundStyle(Color(hex: 0x5E4D6E))
                         }
                         Spacer()
                         Color.clear.frame(width: 60, height: 60)
                     }
                     if store.state.memorial.isEmpty {
                         Spacer()
-                        Text("Inga kryp här än. Se till att ditt är glatt och friskt!")
+                        Text("Inga sötisar här än. Se till att din är glad och frisk!")
                             .font(.cute(24, .medium))
                             .foregroundStyle(Color(hex: 0x5E4D6E))
                         Spacer()
@@ -196,7 +196,7 @@ struct AboutPetView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("Bra att veta").font(.cute(20, .bold))
-                Text("• Tiden går på riktigt, även när spelet är stängt.\n• För lite mat gör \(pet.pronounName) smal. För mycket godis gör \(pet.pronounName) rund. Båda är farliga.\n• Efter en lång tid ifrån varandra vill \(pet.pronounName) gosa extra mycket. När \(pet.pronounName) är full av kärlek vill \(pet.pronounName) vara ifred en stund.\n• Plocka upp bajset! Ett smutsigt rum gör kryp sjuka.")
+                Text("• Tiden går på riktigt, även när spelet är stängt.\n• För lite mat gör \(pet.pronounName) smal. För mycket godis gör \(pet.pronounName) rund. Båda är farliga.\n• Efter en lång tid ifrån varandra vill \(pet.pronounName) gosa extra mycket. När \(pet.pronounName) är full av kärlek vill \(pet.pronounName) vara ifred en stund.\n• Plocka upp bajset! Ett smutsigt rum gör sötisar sjuka.")
                     .font(.cute(17, .medium))
                     .foregroundStyle(Color.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)

@@ -239,7 +239,7 @@ struct BathView: View {
                     }
                     .tint(.lavenderDeep)
                 }
-                Text("+\(Rules.bathReward) mynt när krypet glittrar").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
+                Text("+\(Rules.bathReward) mynt när sötisen glittrar").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(Color.butterLight))
             }
             .foregroundStyle(Color.ink)
