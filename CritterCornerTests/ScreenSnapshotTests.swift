@@ -111,5 +111,36 @@ final class ScreenSnapshotTests: XCTestCase {
         try render("gallery", grid, size: CGSize(width: 1180, height: 410))
     }
 
+    /// The same critters in all four styles, in a few moods and conditions.
+    func testStyles() throws {
+        let genomes = [Genome(seed: 31), Genome(seed: 7919 * 3 + 11), Genome(seed: 2024)]
+        let moods: [Mood] = [.content, .excited, .happy]
+        let sheet = VStack(spacing: 8) {
+            ForEach(CritterStyle.allCases, id: \.self) { style in
+                HStack(spacing: 8) {
+                    Text(style.title).font(.cute(18, .bold)).frame(width: 110, alignment: .leading)
+                    ForEach(0..<3, id: \.self) { index in
+                        CritterView(genome: genomes[index], expression: moods[index], style: style)
+                            .frame(width: 150, height: 150)
+                    }
+                    CritterView(genome: genomes[0], expression: .asleep, style: style).frame(width: 150, height: 150)
+                    CritterView(genome: genomes[1], expression: .sad, coat: CritterCoat(mud: BathSession(seed: genomes[1].seed, dirtiness: 0.9).dirt), style: style).frame(width: 150, height: 150)
+                    CritterView(genome: genomes[2], expression: .sick, coat: CritterCoat(sickly: true), style: style).frame(width: 150, height: 150)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.cream)
+        try render("styles", sheet, size: CGSize(width: 1180, height: 680))
+    }
+
+    func testLongSpeechWrapsInsteadOfGrowing() throws {
+        let bubble = SpeechBubble(text: "Inte tillräckligt med mynt! Plocka bajs eller lek i parken för att tjäna mer.", maxWidth: 280)
+        let renderer = ImageRenderer(content: bubble)
+        let size = try XCTUnwrap(renderer.uiImage).size
+        XCTAssertLessThanOrEqual(size.width, 290)
+        XCTAssertGreaterThan(size.height, 60, "Long lines wrap onto several rows")
+    }
+
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
 }

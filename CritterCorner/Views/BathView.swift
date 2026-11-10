@@ -96,7 +96,8 @@ struct BathView: View {
                 blissful: held == .sponge || underShower,
                 shine: session.step == .done ? pet.shine(at: store.now) : 0,
                 condition: session.step == .done ? .sparkly : (pet.isSick ? .sick : .normal),
-                coat: CritterCoat(mud: session.dirt, foam: session.foam, drops: session.drops, shampoo: useShampoo, sickly: pet.isSick)
+                coat: CritterCoat(mud: session.dirt, foam: session.foam, drops: session.drops, shampoo: useShampoo, sickly: pet.isSick),
+                style: pet.appearance
             )
             .frame(width: 300, height: 300)
             .position(center)

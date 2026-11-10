@@ -11,7 +11,7 @@ struct FarewellView: View {
             ZStack {
                 MemorialSky(size: size)
                 VStack(spacing: 20) {
-                    LiveCritterView(genome: pet.genome, expression: .dead, weight: Rules.healthyWeight, halo: true)
+                    LiveCritterView(genome: pet.genome, expression: .dead, weight: Rules.healthyWeight, halo: true, style: pet.appearance)
                         .frame(width: 300, height: 300)
                     Text("\(pet.name) har svävat iväg till Molnängen")
                         .font(.cute(36, .bold))
@@ -100,7 +100,7 @@ private struct Polaroid: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            LiveCritterView(genome: entry.genome, expression: .dead, halo: true)
+            LiveCritterView(genome: entry.genome, expression: .dead, halo: true, style: entry.appearance)
                 .frame(width: 210, height: 210)
                 .frame(maxWidth: .infinity)
                 .frame(height: 230)
@@ -177,7 +177,7 @@ struct AboutPetView: View {
                 Button("Klar") { dismiss() }.buttonStyle(ChunkyButtonStyle(fill: .butter, shadow: .butterDeep))
             }
             HStack(alignment: .top, spacing: 24) {
-                LiveCritterView(genome: pet.genome, expression: pet.expression(at: now), weight: pet.weight, shine: pet.shine(at: now), condition: pet.condition(at: now), coat: .everyday(for: pet))
+                LiveCritterView(genome: pet.genome, expression: pet.expression(at: now), weight: pet.weight, shine: pet.shine(at: now), condition: pet.condition(at: now), coat: .everyday(for: pet), style: pet.appearance)
                     .frame(width: 220, height: 220)
                     .background(RoundedRectangle(cornerRadius: 28).fill(Color(hex: pet.genome.palette.stage)))
                 VStack(alignment: .leading, spacing: 10) {

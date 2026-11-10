@@ -84,7 +84,7 @@ struct ParkView: View {
             SpeechBubble(text: "\(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) vill leka!", tailOnLeft: false)
                 .position(x: 940, y: ground - 230)
 
-            LiveCritterView(genome: pet.genome, expression: petHop || petWalking ? .excited : .happy, weight: pet.weight, walking: petWalking, facingRight: petFacingRight, blissful: petHop, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet))
+            LiveCritterView(genome: pet.genome, expression: petHop || petWalking ? .excited : .happy, weight: pet.weight, walking: petWalking, facingRight: petFacingRight, blissful: petHop, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
                 .frame(width: 240, height: 240)
                 .offset(y: petHop ? -60 : 0)
                 .position(x: petX, y: ground - 110)

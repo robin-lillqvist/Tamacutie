@@ -190,7 +190,8 @@ struct HomeView: View {
             blissful: (petting && pet.expression(at: store.now) != .ignoring) || chomping || wiggle,
             shine: pet.shine(at: store.now),
             condition: pet.condition(at: store.now),
-            coat: .everyday(for: pet)
+            coat: .everyday(for: pet),
+            style: pet.appearance
         )
         .frame(width: 300, height: 300)
         .scaleEffect(pet.isAsleep ? 0.75 : 1, anchor: .bottom)
@@ -228,7 +229,7 @@ struct HomeView: View {
         return ZStack(alignment: .topLeading) {
             Button { showAbout = true } label: {
                 HStack(spacing: 14) {
-                    CritterView(genome: pet.genome, expression: .happy, weight: pet.weight)
+                    CritterView(genome: pet.genome, expression: .happy, weight: pet.weight, style: pet.appearance)
                         .frame(width: 52, height: 52)
                         .background(Circle().fill(Color(hex: pet.genome.palette.stage)))
                     VStack(alignment: .leading, spacing: 0) {

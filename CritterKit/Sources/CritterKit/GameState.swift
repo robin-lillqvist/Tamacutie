@@ -25,6 +25,9 @@ public struct MemorialEntry: Codable, Equatable, Identifiable, Sendable {
     public let deathDate: Date
     public let cause: CauseOfDeath
     public var candles: Int
+    public var style: CritterStyle?
+
+    public var appearance: CritterStyle { style ?? .vinyl }
 
     public var daysLived: Int { max(0, Int(deathDate.timeIntervalSince(birthDate) / 86400)) }
 
@@ -100,16 +103,16 @@ public struct GameState: Codable, Equatable, Sendable {
 
     // MARK: Pets
 
-    public mutating func adopt(genome: Genome, name: String, now: Date) -> Bool {
+    public mutating func adopt(genome: Genome, name: String, style: CritterStyle = .vinyl, now: Date) -> Bool {
         guard pet == nil else { return false }
-        pet = Pet(name: name, genome: genome, now: now)
+        pet = Pet(name: name, genome: genome, style: style, now: now)
         return true
     }
 
     /// Moves a pet that has died into the memorial so a new one can be adopted.
     public mutating func sayGoodbye() {
         guard let pet, let death = pet.deathDate, let cause = pet.causeOfDeath else { return }
-        memorial.insert(MemorialEntry(id: pet.id, name: pet.name, genome: pet.genome, birthDate: pet.birthDate, deathDate: death, cause: cause, candles: 0), at: 0)
+        memorial.insert(MemorialEntry(id: pet.id, name: pet.name, genome: pet.genome, birthDate: pet.birthDate, deathDate: death, cause: cause, candles: 0, style: pet.style), at: 0)
         self.pet = nil
     }
 

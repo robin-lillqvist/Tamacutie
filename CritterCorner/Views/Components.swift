@@ -118,11 +118,16 @@ struct Dock<Content: View>: View {
 struct SpeechBubble: View {
     let text: String
     var tailOnLeft = true
+    /// Wrap onto several lines instead of growing wider than this.
+    var maxWidth: CGFloat?
 
     var body: some View {
         Text(text)
             .font(.cute(21))
             .foregroundStyle(Color.ink)
+            .multilineTextAlignment(.leading)
+            .frame(width: wrapWidth, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
             .background(
@@ -135,7 +140,16 @@ struct SpeechBubble: View {
                 ).fill(.white)
                 .shadow(color: Color(hex: 0xF3D3DC), radius: 0, y: 6)
             )
-            .fixedSize()
+            .fixedSize(horizontal: maxWidth == nil, vertical: true)
+    }
+
+    /// A fixed text width, only when the line is too long to fit on one row.
+    private var wrapWidth: CGFloat? {
+        guard let maxWidth else { return nil }
+        let base = UIFont.systemFont(ofSize: 21, weight: .semibold)
+        let font = base.fontDescriptor.withDesign(.rounded).map { UIFont(descriptor: $0, size: 21) } ?? base
+        let width = (text as NSString).size(withAttributes: [.font: font]).width
+        return width > maxWidth - 36 ? maxWidth - 36 : nil
     }
 }
 

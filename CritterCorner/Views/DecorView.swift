@@ -26,7 +26,7 @@ struct DecorView: View {
                 }
 
                 if let pet = store.pet {
-                    LiveCritterView(genome: pet.genome, expression: .happy, weight: pet.weight, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet))
+                    LiveCritterView(genome: pet.genome, expression: .happy, weight: pet.weight, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
                         .frame(width: 150, height: 150)
                         .position(x: 110, y: size.height - 120)
                         .allowsHitTesting(false)

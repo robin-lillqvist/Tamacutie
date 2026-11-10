@@ -18,6 +18,7 @@ struct AdoptView: View {
     @State private var eggs = (0..<6).map { _ in EggChoice.random() }
     @State private var picked = 0
     @State private var hatching = false
+    @State private var style = CritterStyle.vinyl
 
     var body: some View {
         DesignCanvas(background: .cream) { size in
@@ -35,7 +36,7 @@ struct AdoptView: View {
                     header
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 22), count: 3), spacing: 22) {
                         ForEach(Array(eggs.enumerated()), id: \.element.id) { index, egg in
-                            EggCard(egg: egg, selected: index == picked) { picked = index }
+                            EggCard(egg: egg, selected: index == picked, style: style) { picked = index }
                         }
                     }
                     Spacer(minLength: 0)
@@ -107,6 +108,8 @@ struct AdoptView: View {
             .buttonStyle(SquishyButtonStyle())
             .accessibilityLabel("Nytt namn")
             Spacer()
+            stylePicker(for: egg)
+            Spacer()
             Button("Kläck \(egg.name)") { hatch(egg) }
                 .buttonStyle(ChunkyButtonStyle())
                 .disabled(hatching)
@@ -114,10 +117,38 @@ struct AdoptView: View {
         .foregroundStyle(Color.ink)
     }
 
+    /// The picked egg drawn in each style; tap one to choose how your critter will look.
+    private func stylePicker(for egg: EggChoice) -> some View {
+        HStack(spacing: 8) {
+            Text("Stil:").font(.cute(18, .medium)).foregroundStyle(Color.inkSoft)
+            ForEach(CritterStyle.allCases, id: \.self) { candidate in
+                Button {
+                    withAnimation(.spring) { style = candidate }
+                    SoundFX.play(.boop)
+                } label: {
+                    VStack(spacing: 0) {
+                        CritterView(genome: egg.genome, expression: .happy, style: candidate)
+                            .frame(width: 52, height: 52)
+                        Text(candidate.title).font(.cute(12)).lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 74, height: 76)
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(candidate == style ? Color.coral : Color(hex: 0xF3E3D3), lineWidth: candidate == style ? 4 : 2))
+                }
+                .buttonStyle(SquishyButtonStyle())
+                .accessibilityIdentifier("style-\(candidate.rawValue)")
+                .accessibilityLabel("Stil: \(candidate.title)")
+                .accessibilityAddTraits(candidate == style ? .isSelected : [])
+            }
+        }
+    }
+
     private func hatch(_ egg: EggChoice) {
         hatching = true
         Reminders.requestPermission()
-        store.perform { state, now in _ = state.adopt(genome: egg.genome, name: egg.name, now: now) }
+        let chosen = style
+        store.perform { state, now in _ = state.adopt(genome: egg.genome, name: egg.name, style: chosen, now: now) }
         navigate(.home)
     }
 }
@@ -125,12 +156,13 @@ struct AdoptView: View {
 private struct EggCard: View {
     let egg: EggChoice
     let selected: Bool
+    let style: CritterStyle
     let onPick: () -> Void
 
     var body: some View {
         Button(action: onPick) {
             VStack(spacing: 8) {
-                LiveCritterView(genome: egg.genome, expression: selected ? .excited : .content)
+                LiveCritterView(genome: egg.genome, expression: selected ? .excited : .content, style: style)
                     .frame(width: 140, height: 140)
                     .frame(maxWidth: .infinity)
                     .frame(height: 150)

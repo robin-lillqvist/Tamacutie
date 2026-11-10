@@ -39,11 +39,13 @@ struct CritterView: View {
     /// 0...1 glossy coat after a bath.
     var shine: Double = 0
     var coat = CritterCoat()
+    var style: CritterStyle = .vinyl
 
     var body: some View {
         Canvas { context, size in
             context.scaleBy(x: size.width / 200, y: size.height / 200)
-            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, shine: shine, coat: coat, context: context).paint()
+            var painter = CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, shine: shine, coat: coat, style: style, context: context)
+            painter.paint()
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
@@ -68,6 +70,7 @@ struct LiveCritterView: View {
     var shine: Double = 0
     var condition: Condition = .normal
     var coat = CritterCoat()
+    var style: CritterStyle = .vinyl
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -87,7 +90,7 @@ struct LiveCritterView: View {
             let giggle = wiggle ? sin(t * 40) * 7 : 0
             let sway: Double = (expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5) + waddle + giggle + lean
             let eyes = CGVector(dx: facingRight ? look.dx : -look.dx, dy: look.dy)
-            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14 || (dying && blinkCycle < 1.4), halo: halo, look: eyes, blissful: blissful, shine: shine, coat: coat)
+            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14 || (dying && blinkCycle < 1.4), halo: halo, look: eyes, blissful: blissful, shine: shine, coat: coat, style: style)
                 .saturation(dying ? 0.3 : (condition == .sick ? 0.75 : 1))
                 .opacity(dying ? 0.9 : 1)
                 .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath * (dying ? 0.95 : 1), anchor: .bottom)
@@ -170,28 +173,16 @@ private struct Twinkles: View {
     }
 }
 
-/// Small seeded quirks that make each critter its own little character.
-private struct Quirks {
-    let eyeSpacing: CGFloat
-    let eyeSize: CGFloat
-    let nose: Int
-    let pattern: Int
-    let earJitter: Double
-    let tuft: Bool
-    let toothy: Bool
 
-    init(seed: UInt64) {
-        var rng = SeededRandom(seed: seed ^ 0x7E57_ABCD_0042_1337)
-        eyeSpacing = .random(in: 24...32, using: &rng)
-        eyeSize = .random(in: 5.5...7.5, using: &rng)
-        nose = .random(in: 0...2, using: &rng)
-        pattern = .random(in: 0...4, using: &rng)
-        earJitter = .random(in: -14...14, using: &rng)
-        tuft = Bool.random(using: &rng)
-        toothy = Int.random(in: 0..<3, using: &rng) == 0
-    }
+/// Mixes two hex colours; `t` = 0 gives `a`, 1 gives `b`.
+private func mix(_ a: UInt32, _ b: UInt32, _ t: Double) -> Color {
+    func channel(_ value: UInt32, _ shift: UInt32) -> Double { Double((value >> shift) & 0xFF) / 255 }
+    func lerp(_ shift: UInt32) -> Double { channel(a, shift) + (channel(b, shift) - channel(a, shift)) * t }
+    return Color(.sRGB, red: lerp(16), green: lerp(8), blue: lerp(0))
 }
 
+/// Draws one critter in one of four styles. Every style shares the genome's silhouette and features,
+/// so a critter keeps its identity; only the way it is drawn changes.
 private struct CritterPainter {
     let genome: Genome
     let expression: Mood
@@ -201,35 +192,109 @@ private struct CritterPainter {
     let look: CGVector
     let shine: Double
     let coat: CritterCoat
+    let style: CritterStyle
     var context: GraphicsContext
 
-    private var body: Color { Color(hex: genome.palette.body) }
-    private var belly: Color { Color(hex: genome.palette.belly) }
-    private var shade: Color { Color(hex: genome.palette.shade) }
+    private var palette: Palette { genome.palette }
+    private var bellyColor: Color { Color(hex: palette.belly) }
+    private var ink: Color { Color(hex: 0x3A2E2A) }
     /// Body width factor: thin critters are narrow, chubby ones wide.
     private var girth: CGFloat { 0.62 + CGFloat(min(max(weight, 0), 100)) / 100 * 0.76 }
     private var spread: CGFloat { 0.8 + 0.2 * girth }
-    private var quirks: Quirks { Quirks(seed: genome.seed) }
+    private var googlyLeft: CGFloat { 12 + CGFloat(genome.seed % 5) }
+    private var googlyRight: CGFloat { 15 + CGFloat((genome.seed / 7) % 5) }
 
-    func paint() {
-        ellipse(100, 186, 56 * girth, 8, .ink, opacity: 0.1)
+    mutating func paint() {
+        let base = context
+        ellipse(100, style == .chibi ? 191 : 186, 56 * girth, 8, .ink, opacity: 0.1)
         if halo { wings() }
         tail()
+        switch style {
+        case .chibi:
+            chibiBody()
+            // The chibi head is the usual critter shape, shrunk and lifted onto a little body.
+            context.translateBy(x: 100, y: 30)
+            context.scaleBy(x: 0.84, y: 0.84)
+            context.translateBy(x: -100, y: -30)
+        case .doodle:
+            doodleLimbs()
+        default:
+            break
+        }
         if genome.head != .sprout && genome.head != .antennae { headFeature() }
         feet()
         torso()
-        arms()
-        if genome.head == .sprout || genome.head == .antennae { headFeature() } else if quirks.tuft { tuft() }
+        if style == .plush { plushArmsAndTag() }
+        if genome.head == .sprout || genome.head == .antennae { headFeature() } else if style == .doodle { doodleHair() }
         eyes()
         cheeks()
         nose()
         mouth()
         if coat.sickly { sickExtras() }
+        context = base
         if halo {
             var ring = Path(ellipseIn: CGRect(x: 66, y: 12, width: 68, height: 18))
             ring = ring.strokedPath(StrokeStyle(lineWidth: 6))
             context.fill(ring, with: .color(.butterDeep))
         }
+    }
+
+    // MARK: Style-aware fill
+
+    /// Fills a body part the way the current style paints things.
+    private func part(_ path: Path, _ hex: UInt32, outline: Bool = true) {
+        let rect = path.boundingRect
+        switch style {
+        case .vinyl:
+            context.fill(path, with: .radialGradient(
+                Gradient(colors: [mix(hex, 0xFFFFFF, 0.45), Color(hex: hex), mix(hex, 0x000000, 0.12)]),
+                center: CGPoint(x: rect.minX + rect.width * 0.35, y: rect.minY + rect.height * 0.3),
+                startRadius: 0,
+                endRadius: max(rect.width, rect.height) * 0.85
+            ))
+        case .chibi:
+            context.fill(path, with: .color(Color(hex: hex)))
+            var shaded = context
+            shaded.clip(to: path)
+            shaded.fill(Path(ellipseIn: CGRect(x: rect.midX - rect.width * 0.1, y: rect.midY, width: rect.width, height: rect.height * 0.8)), with: .color(mix(hex, 0x000000, 0.2).opacity(0.25)))
+            if outline { context.stroke(path, with: .color(ink), style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round)) }
+        case .plush:
+            context.fill(path, with: .color(mix(hex, 0x8A8A8A, 0.08)))
+            var felt = context
+            felt.clip(to: path)
+            var y = rect.minY
+            var row = 0
+            while y < rect.maxY {
+                var x = rect.minX + (row.isMultiple(of: 2) ? 0 : 3)
+                while x < rect.maxX {
+                    felt.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.6, height: 1.6)), with: .color(row.isMultiple(of: 2) ? .black.opacity(0.07) : .white.opacity(0.18)))
+                    x += 6
+                }
+                y += 3
+                row += 1
+            }
+        case .doodle:
+            context.fill(path, with: .color(mix(hex, 0xFFFFFF, 0.15)))
+            var hatch = context
+            hatch.clip(to: path)
+            var lines = Path()
+            var x = rect.minX - rect.height
+            while x < rect.maxX {
+                lines.move(to: CGPoint(x: x, y: rect.maxY))
+                lines.addLine(to: CGPoint(x: x + rect.height * 0.7, y: rect.minY))
+                x += 9
+            }
+            hatch.stroke(lines, with: .color(mix(hex, 0x000000, 0.25).opacity(0.35)), lineWidth: 3)
+            if outline {
+                context.stroke(path, with: .color(ink), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
+                context.stroke(path.applying(CGAffineTransform(translationX: 1.4, y: -1.2)), with: .color(ink.opacity(0.55)), style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+
+    private func oval(_ cx: CGFloat, _ cy: CGFloat, _ rx: CGFloat, _ ry: CGFloat, rotation: Double = 0) -> Path {
+        Path(ellipseIn: CGRect(x: -rx, y: -ry, width: rx * 2, height: ry * 2))
+            .applying(CGAffineTransform(translationX: cx, y: cy).rotated(by: rotation * .pi / 180))
     }
 
     // MARK: Parts
@@ -250,15 +315,64 @@ private struct CritterPainter {
             path.addLine(to: CGPoint(x: 168 + dx, y: 136))
             path.addLine(to: CGPoint(x: 160 + dx, y: 130))
             path.addLine(to: CGPoint(x: 178 + dx, y: 114))
-            stroke(path, shade, width: 10)
+            if style == .chibi || style == .doodle { stroke(path, ink, width: 14) }
+            stroke(path, Color(hex: palette.shade), width: 10)
         case .fin:
             var path = Path()
             path.move(to: CGPoint(x: 156 + dx, y: 160))
             path.addQuadCurve(to: CGPoint(x: 188 + dx, y: 132), control: CGPoint(x: 182 + dx, y: 154))
             path.addQuadCurve(to: CGPoint(x: 168 + dx, y: 170), control: CGPoint(x: 184 + dx, y: 156))
             path.closeSubpath()
-            fill(path, shade)
+            part(path, palette.shade)
         }
+    }
+
+    private func chibiBody() {
+        let w = 66 * girth
+        for side in [-1.0, 1.0] {
+            part(Path(roundedRect: CGRect(x: 100 + side * 15 * girth - 10, y: 166, width: 20, height: 26), cornerRadius: 9), palette.body)
+        }
+        part(Path(roundedRect: CGRect(x: 100 - w / 2, y: 136, width: w, height: 44), cornerRadius: 20), palette.body)
+        context.fill(Path(ellipseIn: CGRect(x: 100 - w * 0.28, y: 150, width: w * 0.56, height: 24)), with: .color(bellyColor))
+    }
+
+    private func doodleLimbs() {
+        var limbs = Path()
+        for side in [-1.0, 1.0] {
+            let hip = 100 + side * 18 * girth
+            limbs.move(to: CGPoint(x: hip, y: 170)); limbs.addLine(to: CGPoint(x: hip + side * 4, y: 194))
+            let shoulder = CGPoint(x: 100 + side * 56 * girth, y: 130)
+            let hand = CGPoint(x: shoulder.x + side * 22, y: 116)
+            limbs.move(to: shoulder); limbs.addLine(to: hand)
+            limbs.move(to: hand); limbs.addLine(to: CGPoint(x: hand.x + side * 6, y: hand.y - 8))
+            limbs.move(to: hand); limbs.addLine(to: CGPoint(x: hand.x + side * 9, y: hand.y + 2))
+        }
+        stroke(limbs, ink, width: 3.5)
+        for side in [-1.0, 1.0] {
+            let foot = oval(100 + side * 18 * girth + side * 8, 195, 9, 4.5)
+            context.stroke(foot, with: .color(ink), lineWidth: 3)
+        }
+    }
+
+    private func doodleHair() {
+        var hair = Path()
+        let top: CGFloat = genome.body == .round ? 62 : 55
+        hair.move(to: CGPoint(x: 82, y: top + 4))
+        for (index, x) in stride(from: 88.0, through: 118, by: 6).enumerated() {
+            hair.addLine(to: CGPoint(x: x, y: index.isMultiple(of: 2) ? top - 14 : top + 2))
+        }
+        stroke(hair, ink, width: 3.5)
+    }
+
+    private func plushArmsAndTag() {
+        for side in [-1.0, 1.0] {
+            part(oval(100 + side * 60 * girth, 142, 12, 21, rotation: side * -25), palette.shade)
+        }
+        let tagCenter = CGPoint(x: 100 + 58 * girth, y: 160)
+        let tag = Path(roundedRect: CGRect(x: -9, y: -6, width: 18, height: 13), cornerRadius: 2)
+            .applying(CGAffineTransform(translationX: tagCenter.x, y: tagCenter.y).rotated(by: 0.2))
+        context.fill(tag, with: .color(.white))
+        context.fill(oval(tagCenter.x, tagCenter.y + 0.5, 3, 3), with: .color(Color(hex: palette.shade)))
     }
 
     private func headFeature() {
@@ -271,37 +385,37 @@ private struct CritterPainter {
             }
             for side in [-1.0, 1.0] {
                 let x = 100 + side * 40 * spread
-                let wonk = side > 0 ? quirks.earJitter : 0
-                ellipse(x, 62, 16, 40, body, rotation: side * tilt + wonk)
-                ellipse(x + side * -2, 66, 7, 27, belly, rotation: side * tilt + wonk)
+                part(oval(x, 62, 16, 40, rotation: side * tilt), palette.body)
+                ellipse(x + side * -2, 66, 7, 27, bellyColor, rotation: side * tilt)
             }
         case .pointyEars:
             for side in [-1.0, 1.0] {
                 func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: 100 + side * x * spread, y: y) }
                 var outer = Path()
-                outer.addLines([p(48, 92), p(44, 38), p(8, 66)])
+                outer.move(to: p(48, 92))
+                outer.addQuadCurve(to: p(44, 38), control: p(50, 60))
+                outer.addQuadCurve(to: p(8, 66), control: p(24, 46))
                 outer.closeSubpath()
-                fill(outer, body)
-                stroke(outer, body, width: 8)
+                part(outer, palette.body)
                 var inner = Path()
                 inner.addLines([p(38, 80), p(36, 54), p(18, 67)])
                 inner.closeSubpath()
                 fill(inner, .pink)
             }
         case .antennae:
-            let knob: Color = genome.palette.name == "Smör" ? .coral : .butter
+            let knob: UInt32 = palette.belly == 0xFFF1C4 ? 0xFF7A8A : 0xFFD66B
             for side in [-1.0, 1.0] {
                 var path = Path()
                 path.move(to: CGPoint(x: 100 + side * 18, y: 62))
                 path.addQuadCurve(to: CGPoint(x: 100 + side * 42, y: 26), control: CGPoint(x: 100 + side * 28, y: 30))
                 stroke(path, .ink, width: 4)
-                ellipse(100 + side * 44, 25, 10, 10, knob)
+                part(oval(100 + side * 44, 25, 10, 10), knob)
             }
         case .roundEars:
             for side in [-1.0, 1.0] {
                 let x = 100 + side * 48 * spread
-                ellipse(x, 80, 15, 15, body)
-                ellipse(x, 80, 7, 7, belly)
+                part(oval(x, 80, 15, 15), palette.body)
+                ellipse(x, 80, 7, 7, bellyColor)
             }
         case .finAndHorns:
             for side in [-1.0, 1.0] {
@@ -311,13 +425,13 @@ private struct CritterPainter {
                 horn.addQuadCurve(to: p(24, 44), control: p(34, 50))
                 horn.addQuadCurve(to: p(16, 66), control: p(22, 58))
                 horn.closeSubpath()
-                fill(horn, .butterLight)
+                part(horn, 0xFFF1C4)
             }
             var fin = Path()
             fin.move(to: CGPoint(x: 84, y: 66))
             fin.addQuadCurve(to: CGPoint(x: 116, y: 66), control: CGPoint(x: 100, y: 30))
             fin.closeSubpath()
-            fill(fin, shade)
+            part(fin, palette.shade)
         case .sprout:
             var stem = Path()
             stem.move(to: CGPoint(x: 100, y: 66))
@@ -327,35 +441,40 @@ private struct CritterPainter {
             left.move(to: CGPoint(x: 100, y: 46))
             left.addQuadCurve(to: CGPoint(x: 68, y: 50), control: CGPoint(x: 78, y: 32))
             left.addQuadCurve(to: CGPoint(x: 100, y: 46), control: CGPoint(x: 86, y: 58))
-            fill(left, .leaf)
+            part(left, 0x7BC96F)
             var right = Path()
             right.move(to: CGPoint(x: 100, y: 42))
             right.addQuadCurve(to: CGPoint(x: 134, y: 40), control: CGPoint(x: 122, y: 24))
             right.addQuadCurve(to: CGPoint(x: 100, y: 42), control: CGPoint(x: 118, y: 52))
-            fill(right, .leaf)
+            part(right, 0x7BC96F)
         }
     }
 
     private func feet() {
-        ellipse(100 - 28 * girth, 177, 15, 9, shade)
-        ellipse(100 + 28 * girth, 177, 15, 9, shade)
+        switch style {
+        case .vinyl:
+            for side in [-1.0, 1.0] { part(oval(100 + side * 30 * girth, 179, 19, 10), palette.shade) }
+        case .plush:
+            for side in [-1.0, 1.0] { part(oval(100 + side * 28 * girth, 179, 18, 10), palette.shade) }
+        case .chibi, .doodle:
+            break
+        }
     }
 
-    private func torso() {
-        var ctx = context
-        ctx.translateBy(x: 100, y: 0)
-        ctx.scaleBy(x: girth, y: 1)
-        ctx.translateBy(x: -100, y: 0)
+    private mutating func torso() {
+        let base = context
+        context.translateBy(x: 100, y: 0)
+        context.scaleBy(x: girth, y: 1)
+        context.translateBy(x: -100, y: 0)
         let outline: Path
+        let bellyRect: CGRect
         switch genome.body {
         case .round:
-            outline = Path(ellipseIn: CGRect(x: 34, y: 60, width: 132, height: 120))
-            ctx.fill(outline, with: .color(body))
-            ctx.fill(Path(ellipseIn: CGRect(x: 60, y: 112, width: 80, height: 60)), with: .color(belly))
+            outline = Path(ellipseIn: CGRect(x: 32, y: 56, width: 136, height: 126))
+            bellyRect = CGRect(x: 60, y: 112, width: 80, height: 60)
         case .bean:
-            outline = Path(roundedRect: CGRect(x: 42, y: 54, width: 116, height: 128), cornerRadius: 58)
-            ctx.fill(outline, with: .color(body))
-            ctx.fill(Path(ellipseIn: CGRect(x: 64, y: 122, width: 72, height: 52)), with: .color(belly))
+            outline = Path(roundedRect: CGRect(x: 42, y: 52, width: 116, height: 130), cornerRadius: 58)
+            bellyRect = CGRect(x: 64, y: 122, width: 72, height: 52)
         case .blob:
             var path = Path()
             path.move(to: CGPoint(x: 40, y: 150))
@@ -364,96 +483,44 @@ private struct CritterPainter {
             path.addCurve(to: CGPoint(x: 100, y: 182), control1: CGPoint(x: 158, y: 172), control2: CGPoint(x: 140, y: 182))
             path.addCurve(to: CGPoint(x: 40, y: 150), control1: CGPoint(x: 60, y: 182), control2: CGPoint(x: 42, y: 172))
             outline = path
-            ctx.fill(path, with: .color(body))
-            ctx.fill(Path(ellipseIn: CGRect(x: 62, y: 128, width: 76, height: 44)), with: .color(belly))
+            bellyRect = CGRect(x: 62, y: 128, width: 76, height: 44)
         }
-        paintPattern(in: ctx, clippedTo: outline)
-        defer { paintCoat(in: ctx, clippedTo: outline) }
-        if shine > 0 {
-            let gloss = Color.white.opacity(0.65 * shine)
-            let top: CGFloat = genome.body == .round ? 66 : 58
-            let highlight = Path(ellipseIn: CGRect(x: -22, y: -8, width: 44, height: 16))
-                .applying(CGAffineTransform(translationX: 70, y: top + 26).rotated(by: -0.6))
-            ctx.fill(highlight, with: .color(gloss))
-            ctx.fill(Path(ellipseIn: CGRect(x: 52, y: top + 44, width: 9, height: 9)), with: .color(gloss))
-            let rim = Path(ellipseIn: CGRect(x: 120, y: top + 70, width: 28, height: 10))
-                .applying(CGAffineTransform(translationX: 134, y: top + 75).rotated(by: 0.9).translatedBy(x: -134, y: -(top + 75)))
-            ctx.fill(rim, with: .color(Color.white.opacity(0.35 * shine)))
+        part(outline, palette.body)
+        let belly = Path(ellipseIn: bellyRect)
+        context.fill(belly, with: .color(style == .doodle ? mix(palette.belly, 0xFFFFFF, 0.2) : bellyColor))
+        if style == .plush {
+            context.stroke(Path(ellipseIn: bellyRect.insetBy(dx: 5, dy: 5)), with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: 2.5, dash: [6, 5]))
+            context.stroke(Path { p in p.move(to: CGPoint(x: 100, y: outline.boundingRect.minY + 4)); p.addLine(to: CGPoint(x: 100, y: outline.boundingRect.minY + 30)) }, with: .color(.white.opacity(0.8)), style: StrokeStyle(lineWidth: 2.5, dash: [6, 5]))
         }
         switch genome.marking {
         case .none:
             break
         case .spots:
             for (x, y, r) in [(54.0, 112.0, 7.0), (148, 96, 5), (142, 140, 4)] {
-                ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(shade))
+                context.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(Color(hex: palette.shade)))
             }
         case .sparkles:
             for (x, y, r) in [(62.0, 96.0, 4.0), (144, 128, 3), (132, 80, 2.5)] {
-                ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(.white.opacity(0.75)))
+                context.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(.white.opacity(0.75)))
             }
         case .forehead:
             var chevron = Path()
             chevron.addLines([CGPoint(x: 90, y: 72), CGPoint(x: 100, y: 82), CGPoint(x: 110, y: 72)])
-            ctx.stroke(chevron, with: .color(shade), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            context.stroke(chevron, with: .color(Color(hex: palette.shade)), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
         }
-    }
-
-    /// Bold flat graphic patterns: stripes, polka dots, colour-blocked bottoms or a little cap.
-    private func paintPattern(in base: GraphicsContext, clippedTo outline: Path) {
-        var c = base
-        c.clip(to: outline)
-        switch quirks.pattern {
-        case 1:
-            for y in [146.0, 162, 178] { c.box(0, y, 200, 7, shade.opacity(0.85)) }
-        case 2:
-            for (x, y) in [(56.0, 96.0), (146, 104), (52, 140), (150, 146), (124, 78), (78, 74)] { c.dot(x, y, 6, belly) }
-        case 3:
-            c.box(0, 156, 200, 50, shade)
-        case 4:
-            c.box(0, 0, 200, genome.body == .round ? 84 : 78, shade)
-        default:
-            break
+        // Vinyl always has a soft gloss; a fresh bath makes every style shine.
+        let gloss = style == .vinyl ? 0.55 + 0.3 * shine : 0.65 * shine
+        if gloss > 0 {
+            let top = outline.boundingRect.minY
+            context.fill(oval(72, top + 28, 22, 9, rotation: -32), with: .color(.white.opacity(gloss)))
+            context.fill(oval(56, top + 48, 4.5, 4.5), with: .color(.white.opacity(gloss)))
         }
-    }
-
-    private func arms() {
-        let pose: Double = switch expression {
-        case .excited: 150
-        case .happy: 38
-        case .sad, .sick, .dead: 6
-        case .asleep: 12
-        default: 24
+        if style == .chibi || style == .doodle {
+            // Re-stroke so the belly and markings sit inside the outline.
+            context.stroke(outline, with: .color(ink), style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
         }
-        for side in [-1.0, 1.0] {
-            let shoulder = CGPoint(x: 100 + side * 54 * girth, y: 124)
-            let angle = side * pose * .pi / 180
-            let center = CGPoint(x: shoulder.x + sin(angle) * 16, y: shoulder.y + cos(angle) * 16)
-            ellipse(center.x, center.y, 9, 19, shade, rotation: -side * pose)
-            let hand = CGPoint(x: shoulder.x + sin(angle) * 32, y: shoulder.y + cos(angle) * 32)
-            ellipse(hand.x, hand.y, 8, 8, shade)
-        }
-    }
-
-    private func tuft() {
-        var hair = Path()
-        let top: CGFloat = genome.body == .round ? 62 : 55
-        hair.move(to: CGPoint(x: 94, y: top + 4)); hair.addQuadCurve(to: CGPoint(x: 90, y: top - 12), control: CGPoint(x: 86, y: top - 2))
-        hair.move(to: CGPoint(x: 100, y: top + 2)); hair.addQuadCurve(to: CGPoint(x: 102, y: top - 16), control: CGPoint(x: 96, y: top - 8))
-        hair.move(to: CGPoint(x: 106, y: top + 4)); hair.addQuadCurve(to: CGPoint(x: 114, y: top - 10), control: CGPoint(x: 112, y: top - 2))
-        stroke(hair, shade, width: 5)
-    }
-
-    private func nose() {
-        guard genome.eyes != .cyclops else { return }
-        switch quirks.nose {
-        case 1:
-            ellipse(100, 118, 4.5, 3, .ink)
-        case 2:
-            ellipse(100, 118, 5.5, 4.2, .coralDeep)
-            ellipse(98.5, 116.8, 1.6, 1.2, .white, opacity: 0.7)
-        default:
-            break
-        }
+        paintCoat(in: context, clippedTo: outline)
+        context = base
     }
 
     /// Mud, foam and drops painted onto the fur, clipped to the body so they move with it.
@@ -508,59 +575,75 @@ private struct CritterPainter {
         context.fill(sweat, with: .color(.sky))
     }
 
+    // MARK: Face
+
     private var eyesClosed: Bool {
         blinking || [.asleep, .dead, .ignoring].contains(expression)
     }
 
+    private var eyeCenters: [CGFloat] {
+        if genome.eyes == .cyclops { return [100] }
+        let spacing: CGFloat = style == .chibi ? 26 : 23
+        return [100 - spacing * spread, 100 + spacing * spread]
+    }
+
     private func eyes() {
-        let q = quirks
-        let centers: [CGFloat] = genome.eyes == .cyclops ? [100] : [100 - q.eyeSpacing * spread, 100 + q.eyeSpacing * spread]
         let lookShift: CGFloat = expression == .ignoring ? -12 : 0
-        let lx = CGFloat(max(-1, min(1, look.dx))) * 4
-        let ly = CGFloat(max(-1, min(1, look.dy))) * 3
-        for cx in centers.map({ $0 + lookShift }) {
-            let wide: CGFloat = genome.eyes == .cyclops ? 16 : q.eyeSize + 3
+        let lx = CGFloat(max(-1, min(1, look.dx))) * 5
+        let ly = CGFloat(max(-1, min(1, look.dy))) * 4
+        for (index, cx) in eyeCenters.map({ $0 + lookShift }).enumerated() {
+            let cyclops = genome.eyes == .cyclops
             if eyesClosed {
-                var arc = Path()
-                switch expression {
-                case .asleep, .ignoring:
-                    arc.move(to: CGPoint(x: cx - wide, y: 106))
-                    arc.addQuadCurve(to: CGPoint(x: cx + wide, y: 106), control: CGPoint(x: cx, y: 115))
-                default:
-                    arc.move(to: CGPoint(x: cx - wide, y: 110))
-                    arc.addQuadCurve(to: CGPoint(x: cx + wide, y: 110), control: CGPoint(x: cx, y: 99))
-                }
-                stroke(arc, .ink, width: 3.5)
+                closedEye(cx, wide: cyclops ? 18 : (style == .chibi ? 9 : 12))
                 continue
             }
-            if genome.eyes == .cyclops {
-                ellipse(cx, 106, 19, 20, .white)
-                ellipse(cx + lx * 1.4, 108 + ly, 10, 11, .ink)
-                ellipse(cx + 4 + lx * 1.4, 103 + ly, 3.5, 3.5, .white)
-            } else if expression == .sick {
-                ellipse(cx, 110, q.eyeSize, q.eyeSize * 0.55, .ink)
-                var lid = Path()
-                lid.move(to: CGPoint(x: cx - q.eyeSize - 2, y: 106))
-                lid.addLine(to: CGPoint(x: cx + q.eyeSize + 2, y: 106))
-                stroke(lid, .ink, width: 2.5)
-            } else {
-                let big: CGFloat = expression == .excited ? 1.25 : (expression == .sad ? 0.9 : 1)
-                let r = q.eyeSize * big
-                ellipse(cx + lx, 108 + ly, r * 0.85, r, .ink)
-                ellipse(cx + lx + r * 0.3, 108 + ly - r * 0.4, r * 0.3, r * 0.3, .white)
-                if expression == .excited { ellipse(cx + lx - r * 0.3, 108 + ly + r * 0.35, r * 0.15, r * 0.15, .white) }
+            switch style {
+            case .vinyl:
+                if cyclops {
+                    ellipse(cx, 106, 22, 24, .white)
+                    ellipse(cx + lx * 1.4, 110 + ly, 15, 17, .ink)
+                    ellipse(cx + 7 + lx * 1.4, 102 + ly, 6, 6, .white)
+                } else if expression == .sick {
+                    ellipse(cx, 113, 12, 7, .ink)
+                } else {
+                    let big: CGFloat = expression == .excited ? 1.15 : (expression == .sad ? 0.88 : 1)
+                    ellipse(cx + lx, 110 + ly, 12.5 * big, 14.5 * big, .ink)
+                    ellipse(cx + lx + 4.5 * big, 104.5 + ly, 5 * big, 5 * big, .white)
+                    ellipse(cx + lx - 3 * big, 116 + ly, 2.2 * big, 2.2 * big, .white)
+                }
+            case .chibi:
+                let r: CGFloat = cyclops ? 11 : (expression == .excited ? 8 : 6.5)
+                if expression == .sick {
+                    ellipse(cx, 110, r, r * 0.55, ink)
+                } else {
+                    ellipse(cx + lx * 0.8, 108 + ly * 0.8, r * 0.9, r, ink)
+                    ellipse(cx + lx * 0.8 + r * 0.32, 108 + ly * 0.8 - r * 0.35, r * 0.32, r * 0.32, .white)
+                }
+            case .plush:
+                let r: CGFloat = cyclops ? 15 : 10
+                ellipse(cx, 108, r, r, ink)
+                context.stroke(oval(cx, 108, r * 0.65, r * 0.65), with: .color(Color(hex: 0x6B5A55)), lineWidth: 1.6)
+                ellipse(cx - r * 0.22, 106, 1.6, 1.6, .white, opacity: 0.7)
+                ellipse(cx + r * 0.22, 110, 1.6, 1.6, .white, opacity: 0.7)
+            case .doodle:
+                let r = cyclops ? CGFloat(22) : (index == 0 ? googlyLeft : googlyRight)
+                let y: CGFloat = 104 - (index == 1 ? 3 : 0)
+                ellipse(cx, y, r, r, .white)
+                context.stroke(oval(cx, y, r, r), with: .color(ink), lineWidth: 2.6)
+                let droop: CGFloat = expression == .sad || expression == .sick ? 4 : 0
+                ellipse(cx + lx * 1.2 + (index == 0 ? 2 : -2), y + ly + droop + 2, r * 0.42, r * 0.42, ink)
             }
         }
-        if [.sad, .hungry, .sick].contains(expression), genome.eyes == .big {
-            for (index, cx) in centers.enumerated() {
+        if [.sad, .hungry, .sick].contains(expression), genome.eyes == .big, style != .plush {
+            for (index, cx) in eyeCenters.enumerated() {
                 let side: CGFloat = index == 0 ? 1 : -1
                 var brow = Path()
-                brow.move(to: CGPoint(x: cx - side * 9, y: 98))
-                brow.addLine(to: CGPoint(x: cx + side * 4, y: 93))
+                brow.move(to: CGPoint(x: cx - side * 10, y: 95))
+                brow.addLine(to: CGPoint(x: cx + side * 5, y: 89))
                 stroke(brow, .ink, width: 3)
             }
         }
-        if expression == .sad, let first = centers.first {
+        if expression == .sad, let first = eyeCenters.first {
             var tear = Path()
             tear.move(to: CGPoint(x: first - 4, y: 122))
             tear.addQuadCurve(to: CGPoint(x: first - 4, y: 136), control: CGPoint(x: first, y: 130))
@@ -568,65 +651,114 @@ private struct CritterPainter {
         }
     }
 
+    private func closedEye(_ cx: CGFloat, wide: CGFloat) {
+        if style == .plush {
+            var cross = Path()
+            cross.move(to: CGPoint(x: cx - 7, y: 102)); cross.addLine(to: CGPoint(x: cx + 7, y: 114))
+            cross.move(to: CGPoint(x: cx + 7, y: 102)); cross.addLine(to: CGPoint(x: cx - 7, y: 114))
+            stroke(cross, ink, width: 3.5)
+            return
+        }
+        var arc = Path()
+        switch expression {
+        case .asleep, .ignoring:
+            arc.move(to: CGPoint(x: cx - wide, y: 107))
+            arc.addQuadCurve(to: CGPoint(x: cx + wide, y: 107), control: CGPoint(x: cx, y: 117))
+        default:
+            arc.move(to: CGPoint(x: cx - wide, y: 111))
+            arc.addQuadCurve(to: CGPoint(x: cx + wide, y: 111), control: CGPoint(x: cx, y: 98))
+        }
+        stroke(arc, .ink, width: style == .chibi ? 3.5 : 4.5)
+    }
+
     private func cheeks() {
-        let color: Color = expression == .sick ? Color(hex: 0x9AD39A) : .blush
-        let opacity = expression == .excited ? 0.8 : 0.6
         let shift: CGFloat = expression == .ignoring ? -12 : 0
-        let x = (quirks.eyeSpacing + 13) * spread
-        ellipse(100 - x + shift, 124, 7.5, 6, color, opacity: opacity)
-        ellipse(100 + x + shift, 124, 7.5, 6, color, opacity: opacity)
+        let sick = expression == .sick
+        let color: Color = sick ? Color(hex: 0x9AD39A) : (style == .doodle ? .coral : .blush)
+        let x = 38 * girth
+        switch style {
+        case .vinyl:
+            for side in [-1.0, 1.0] { ellipse(100 + side * x + shift, 130, 11, 7, color, opacity: expression == .excited ? 0.6 : 0.5) }
+        case .chibi:
+            for side in [-1.0, 1.0] { ellipse(100 + side * x + shift, 126, 7.5, 7.5, color, opacity: 0.7) }
+        case .plush:
+            for side in [-1.0, 1.0] { ellipse(100 + side * x + shift, 128, 8, 8, color, opacity: 0.45) }
+        case .doodle:
+            for side in [-1.0, 1.0] { ellipse(100 + side * (x + 4) + shift, 132, 9, 7, color, opacity: 0.5) }
+        }
+    }
+
+    private func nose() {
+        guard genome.eyes != .cyclops else { return }
+        switch style {
+        case .chibi:
+            ellipse(100, 120, 5, 3.5, ink)
+        case .plush:
+            var triangle = Path()
+            triangle.addLines([CGPoint(x: 93, y: 118), CGPoint(x: 107, y: 118), CGPoint(x: 100, y: 126)])
+            triangle.closeSubpath()
+            fill(triangle, Color(hex: 0xC2566E))
+        case .vinyl, .doodle:
+            break
+        }
     }
 
     private func mouth() {
+        let stitched = style == .plush
+        let dy: CGFloat = style == .chibi ? 2 : (style == .plush ? 4 : 0)
+        func draw(_ path: Path) {
+            let moved = path.applying(CGAffineTransform(translationX: 0, y: dy))
+            if stitched {
+                context.stroke(moved, with: .color(Color(hex: 0xC2566E)), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, dash: [4, 3]))
+            } else {
+                stroke(moved, .ink, width: 3)
+            }
+        }
         var path = Path()
         switch expression {
         case .happy, .dead:
-            path.move(to: CGPoint(x: 92, y: 126))
-            path.addQuadCurve(to: CGPoint(x: 100, y: 126), control: CGPoint(x: 96, y: 132))
-            path.addQuadCurve(to: CGPoint(x: 108, y: 126), control: CGPoint(x: 104, y: 132))
-            stroke(path, .ink, width: 3)
+            path.move(to: CGPoint(x: 92, y: 128))
+            path.addQuadCurve(to: CGPoint(x: 100, y: 128), control: CGPoint(x: 96, y: 134))
+            path.addQuadCurve(to: CGPoint(x: 108, y: 128), control: CGPoint(x: 104, y: 134))
+            draw(path)
         case .content:
-            path.move(to: CGPoint(x: 93, y: 128))
-            path.addQuadCurve(to: CGPoint(x: 107, y: 128), control: CGPoint(x: 100, y: 136))
-            if quirks.toothy {
-                path.closeSubpath()
-                fill(path, .ink)
-                fill(Path(roundedRect: CGRect(x: 97, y: 128, width: 6, height: 5), cornerRadius: 1.5), .white)
-            } else {
-                stroke(path, .ink, width: 3)
+            path.move(to: CGPoint(x: 93, y: 129))
+            path.addQuadCurve(to: CGPoint(x: 107, y: 129), control: CGPoint(x: 100, y: 137))
+            draw(path)
+            if style == .doodle {
+                fill(Path(CGRect(x: 97, y: 131, width: 6, height: 5)), .white)
+                context.stroke(Path(CGRect(x: 97, y: 131, width: 6, height: 5)), with: .color(ink), lineWidth: 1.5)
             }
         case .excited:
-            path.move(to: CGPoint(x: 88, y: 126))
-            path.addQuadCurve(to: CGPoint(x: 112, y: 126), control: CGPoint(x: 100, y: 146))
+            path.move(to: CGPoint(x: 88, y: 127 + dy))
+            path.addQuadCurve(to: CGPoint(x: 112, y: 127 + dy), control: CGPoint(x: 100, y: 147 + dy))
             path.closeSubpath()
-            fill(path, .ink)
-            ellipse(100, 133, 6, 3, .coral)
+            fill(path, stitched ? Color(hex: 0xC2566E) : .ink)
+            ellipse(100, 134 + dy, 6, 3, .coral)
         case .hungry:
-            ellipse(100, 132, 7, 8, .ink)
+            ellipse(100, 133 + dy, 7, 8, stitched ? Color(hex: 0xC2566E) : .ink)
         case .sad:
-            path.move(to: CGPoint(x: 92, y: 134))
-            path.addQuadCurve(to: CGPoint(x: 108, y: 134), control: CGPoint(x: 100, y: 126))
-            stroke(path, .ink, width: 3)
+            path.move(to: CGPoint(x: 92, y: 135))
+            path.addQuadCurve(to: CGPoint(x: 108, y: 135), control: CGPoint(x: 100, y: 127))
+            draw(path)
         case .sick:
-            path.move(to: CGPoint(x: 90, y: 132))
-            path.addQuadCurve(to: CGPoint(x: 100, y: 132), control: CGPoint(x: 95, y: 127))
-            path.addQuadCurve(to: CGPoint(x: 110, y: 132), control: CGPoint(x: 105, y: 137))
-            stroke(path, .ink, width: 3)
+            path.move(to: CGPoint(x: 90, y: 133))
+            path.addQuadCurve(to: CGPoint(x: 100, y: 133), control: CGPoint(x: 95, y: 128))
+            path.addQuadCurve(to: CGPoint(x: 110, y: 133), control: CGPoint(x: 105, y: 138))
+            draw(path)
         case .asleep, .sleepy:
-            ellipse(100, 132, 4, 3, .ink)
+            ellipse(100, 133 + dy, 4, 3, stitched ? Color(hex: 0xC2566E) : .ink)
         case .ignoring:
-            path.move(to: CGPoint(x: 80, y: 130))
-            path.addQuadCurve(to: CGPoint(x: 94, y: 130), control: CGPoint(x: 87, y: 126))
-            stroke(path, .ink, width: 3)
+            path.move(to: CGPoint(x: 80, y: 131))
+            path.addQuadCurve(to: CGPoint(x: 94, y: 131), control: CGPoint(x: 87, y: 127))
+            draw(path)
         }
     }
 
     // MARK: Primitives
 
     private func ellipse(_ cx: CGFloat, _ cy: CGFloat, _ rx: CGFloat, _ ry: CGFloat, _ color: Color, rotation: Double = 0, opacity: Double = 1) {
-        let path = Path(ellipseIn: CGRect(x: -rx, y: -ry, width: rx * 2, height: ry * 2))
-            .applying(CGAffineTransform(translationX: cx, y: cy).rotated(by: rotation * .pi / 180))
-        context.fill(path, with: .color(color.opacity(opacity)))
+        context.fill(oval(cx, cy, rx, ry, rotation: rotation), with: .color(color.opacity(opacity)))
     }
 
     private func fill(_ path: Path, _ color: Color) {
@@ -640,8 +772,8 @@ private struct CritterPainter {
 
 #Preview {
     HStack {
-        ForEach(0..<4) { index in
-            LiveCritterView(genome: Genome(seed: UInt64(index * 31)), expression: [.happy, .excited, .sad, .ignoring][index])
+        ForEach(CritterStyle.allCases, id: \.self) { style in
+            LiveCritterView(genome: Genome(seed: 31), expression: .happy, style: style)
                 .frame(width: 200, height: 200)
         }
     }

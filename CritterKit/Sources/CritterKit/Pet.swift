@@ -67,6 +67,20 @@ public enum WeightStage: String, Codable, CaseIterable, Sendable {
     public var isDangerous: Bool { self == .starving || self == .obese }
 }
 
+/// The art style a critter is drawn in, picked when it hatches.
+public enum CritterStyle: String, Codable, CaseIterable, Sendable {
+    case vinyl, chibi, plush, doodle
+
+    public var title: String {
+        switch self {
+        case .vinyl: "Mjuk vinyl"
+        case .chibi: "Tecknad"
+        case .plush: "Gosedjur"
+        case .doodle: "Kludd"
+        }
+    }
+}
+
 /// How the critter looks overall, from freshly bathed to fading away.
 public enum Condition: String, Sendable {
     case sparkly, clean, normal, dirty, filthy, sick, dying, dead
@@ -97,8 +111,13 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
     /// When the post-bath shine started and when it wears off.
     public private(set) var shineStart: Date?
     public private(set) var shineEnd: Date?
+    /// Optional so saves from before styles existed still load; they are drawn as vinyl.
+    public var style: CritterStyle?
 
-    public init(name: String, genome: Genome, now: Date) {
+    public var appearance: CritterStyle { style ?? .vinyl }
+
+    public init(name: String, genome: Genome, style: CritterStyle = .vinyl, now: Date) {
+        self.style = style
         id = UUID()
         self.name = name
         self.genome = genome

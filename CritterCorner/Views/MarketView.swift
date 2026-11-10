@@ -155,8 +155,8 @@ struct MarketView: View {
             .card(shadow: shadow)
 
             Spacer(minLength: 0)
-            ZStack(alignment: .topLeading) {
-                VStack(spacing: -40) {
+            // The clerk and till stay put; only the speech bubble changes size, growing upwards.
+            VStack(spacing: -40) {
                     LiveCritterView(genome: Self.cashier, expression: .happy)
                         .frame(width: 150, height: 150)
                     SketchView(width: 270, height: 90) { c in
@@ -170,9 +170,12 @@ struct MarketView: View {
                         c.box(190, 38, 50, 16, radius: 5, .ink)
                     }
                     .frame(width: 270, height: 90)
-                }
-                .padding(.top, 40)
-                SpeechBubble(text: cashierLine)
+            }
+            .frame(width: 290, height: 200, alignment: .bottom)
+            .overlay(alignment: .top) {
+                SpeechBubble(text: cashierLine, maxWidth: 280)
+                    .alignmentGuide(.top) { $0[.bottom] + 4 }
+                    .allowsHitTesting(false)
             }
         }
         .frame(width: 290, height: height)
