@@ -7,7 +7,7 @@ struct MarketView: View {
     @Environment(\.navigate) private var navigate
     @State private var aisle = Aisle.food
     @State private var basket: [String: Int] = [:]
-    @State private var cashierLine = "Welcome to Paws & Peas!"
+    @State private var cashierLine = "Välkommen till Tass & Tugg!"
 
     private static let cashier = Genome(seed: 77, body: .round, head: .pointyEars, eyes: .big, tail: .lightning, marking: .forehead, paletteIndex: 3, traits: [])
     private let shadow = Color(hex: 0xBFE5D8)
@@ -22,9 +22,9 @@ struct MarketView: View {
                 Awning(width: size.width).frame(width: size.width, height: 100)
                 VStack(spacing: 20) {
                     HStack {
-                        RoundIconButton(systemName: "chevron.left", label: "Back home", shadow: shadow) { navigate(.home) }
+                        RoundIconButton(systemName: "chevron.left", label: "Tillbaka hem", shadow: shadow) { navigate(.home) }
                         Spacer()
-                        TitlePill(title: "Paws & Peas Market", shadow: shadow)
+                        TitlePill(title: "Affären Tass & Tugg", shadow: shadow)
                         Spacer()
                         CoinPill(coins: store.state.coins, shadow: shadow)
                     }
@@ -54,7 +54,7 @@ struct MarketView: View {
                 .buttonStyle(SquishyButtonStyle())
                 .accessibilityAddTraits(candidate == aisle ? .isSelected : [])
             }
-            Text("Too many treats make your critter chubby!")
+            Text("För mycket godis gör ditt kryp runt!")
                 .font(.cute(15, .medium))
                 .padding(14)
                 .frame(width: 160)
@@ -92,12 +92,12 @@ struct MarketView: View {
                 .minimumScaleFactor(0.7)
                 .padding(.horizontal, 10).padding(.vertical, 2)
                 .background(Capsule().fill(Color.peachLight))
-            Text("You have \(store.state.count(of: item.id))")
+            Text("Du har \(store.state.count(of: item.id))")
                 .font(.cute(13, .medium)).foregroundStyle(Color.inkSoft)
             Button {
                 basket[item.id, default: 0] += 1
                 SoundFX.play(.boop)
-                cashierLine = ["Ooh, good choice!", "Yummy pick!", "Anything else?", "Your critter will love that!"].randomElement()!
+                cashierLine = ["Åh, bra val!", "Mums, gott val!", "Något mer?", "Det kommer ditt kryp att älska!"].randomElement()!
             } label: {
                 HStack(spacing: 4) {
                     CoinIcon(size: 22)
@@ -109,7 +109,7 @@ struct MarketView: View {
                 .background(Capsule().fill(Color.coral))
             }
             .buttonStyle(SquishyButtonStyle())
-            .accessibilityLabel("Add \(item.name) to basket, \(item.price) coins")
+            .accessibilityLabel("Lägg \(item.name) i korgen, \(item.price) mynt")
         }
         .foregroundStyle(Color.ink)
         .padding(12)
@@ -120,9 +120,9 @@ struct MarketView: View {
     private func basketPanel(height: CGFloat) -> some View {
         VStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Basket", systemImage: "basket.fill").font(.cute(22, .bold))
+                Label("Korgen", systemImage: "basket.fill").font(.cute(22, .bold))
                 if basket.isEmpty {
-                    Text("Tap a price to add it.").font(.cute(17, .medium)).foregroundStyle(Color.inkSoft)
+                    Text("Tryck på ett pris för att lägga i korgen.").font(.cute(17, .medium)).foregroundStyle(Color.inkSoft)
                 }
                 ForEach(basket.keys.sorted(), id: \.self) { id in
                     if let item = Catalog.item(id) {
@@ -133,18 +133,18 @@ struct MarketView: View {
                             Button { removeOne(id) } label: {
                                 Image(systemName: "minus.circle.fill").font(.system(size: 22)).foregroundStyle(Color.coralDeep)
                             }
-                            .accessibilityLabel("Remove one \(item.name)")
+                            .accessibilityLabel("Ta bort en \(item.name)")
                         }
                     }
                 }
                 Rectangle().fill(Color(hex: 0xF0E6EE)).frame(height: 2)
                 HStack {
-                    Text("Total").font(.cute(20, .bold))
+                    Text("Totalt").font(.cute(20, .bold))
                     Spacer()
-                    Text("\(total) coins").font(.cute(20, .bold))
+                    Text("\(total) mynt").font(.cute(20, .bold))
                         .foregroundStyle(total > store.state.coins ? Color.coralDeep : Color.ink)
                 }
-                Button("Pay at the till") { checkout() }
+                Button("Betala i kassan") { checkout() }
                     .buttonStyle(ChunkyButtonStyle(fill: .butter, shadow: .butterDeep))
                     .frame(maxWidth: .infinity)
                     .disabled(basket.isEmpty)
@@ -185,7 +185,7 @@ struct MarketView: View {
 
     private func checkout() {
         guard total <= store.state.coins else {
-            cashierLine = "Not enough coins! Scoop poop or play at the park to earn more."
+            cashierLine = "Inte tillräckligt med mynt! Plocka upp bajs eller lek i parken så tjänar du mer."
             return
         }
         let order = basket
@@ -195,8 +195,8 @@ struct MarketView: View {
         basket = [:]
         SoundFX.play(.coin)
         Haptics.success()
-        cashierLine = "Thank you! Come again!"
-        toaster.show("Bought! Find it in your fridge and cupboard.")
+        cashierLine = "Tack! Välkommen åter!"
+        toaster.show("Köpt! Du hittar det i kylen och skåpet.")
     }
 }
 

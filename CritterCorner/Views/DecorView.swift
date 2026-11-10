@@ -48,9 +48,9 @@ struct DecorView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            RoundIconButton(systemName: "chevron.left", label: "Back home", shadow: shadow) { navigate(.home) }
+            RoundIconButton(systemName: "chevron.left", label: "Tillbaka hem", shadow: shadow) { navigate(.home) }
             VStack(alignment: .leading, spacing: 2) {
-                Text("Cosiness").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
+                Text("Mysighet").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
                 HStack(spacing: 10) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -66,7 +66,7 @@ struct DecorView: View {
             .padding(.horizontal, 20)
             .frame(height: 64)
             .card(shadow: shadow, radius: 32)
-            Text("Drag to move · tap to select")
+            Text("Dra för att flytta · tryck för att välja")
                 .font(.cute(16))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
@@ -122,7 +122,7 @@ struct DecorView: View {
                     }
             )
             .onTapGesture { selectedDecor = selectedDecor == decor.id ? nil : decor.id }
-            .accessibilityLabel(Catalog.item(decor.itemID)?.name ?? "Decoration")
+            .accessibilityLabel(Catalog.item(decor.itemID)?.name ?? "Dekoration")
             .accessibilityAddTraits(.isButton)
     }
 
@@ -131,14 +131,14 @@ struct DecorView: View {
         let point = layout.point(for: decor)
         return HStack(spacing: 10) {
             Button { store.perform { state, _ in state.flip(decor.id) } } label: {
-                Label("Flip", systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right.fill")
+                Label("Vänd", systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right.fill")
             }
             .buttonStyle(ChunkyButtonStyle(fill: .white, shadow: shadow))
             Button {
                 store.perform { state, _ in state.putAway(decor.id) }
                 selectedDecor = nil
             } label: {
-                Label("Put away", systemImage: "tray.and.arrow.down.fill")
+                Label("Plocka undan", systemImage: "tray.and.arrow.down.fill")
             }
             .buttonStyle(ChunkyButtonStyle())
         }
@@ -150,7 +150,7 @@ struct DecorView: View {
         let chosen = Catalog.item(chosenItem)
         return VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Cosy Corner Shop").font(.cute(26, .bold))
+                Text("Myshörnans butik").font(.cute(26, .bold))
                 Spacer()
                 HStack(spacing: 4) {
                     CoinIcon(size: 28)
@@ -175,7 +175,7 @@ struct DecorView: View {
                             VStack(spacing: 4) {
                                 ItemArt(id: item.id).frame(width: 110, height: 80)
                                 Text(item.name).font(.cute(16)).lineLimit(1).minimumScaleFactor(0.8)
-                                Text(store.state.count(of: item.id) > 0 ? "Owned ×\(store.state.count(of: item.id))" : "\(item.price) coins")
+                                Text(store.state.count(of: item.id) > 0 ? "Du har ×\(store.state.count(of: item.id))" : "\(item.price) mynt")
                                     .font(.cute(15, .bold))
                                     .foregroundStyle(store.state.count(of: item.id) > 0 ? Color.mintDeep : Color.ink)
                             }
@@ -190,13 +190,13 @@ struct DecorView: View {
             .padding(4)
             Spacer(minLength: 0)
             if let chosen {
-                Text("\(chosen.name) · \(chosen.blurb) · +\(chosen.cosiness) cosy")
+                Text("\(chosen.name) · \(chosen.blurb) · +\(chosen.cosiness) mys")
                     .font(.cute(15, .medium))
                     .foregroundStyle(Color.inkSoft)
                 HStack(spacing: 10) {
-                    Button("Buy · \(chosen.price)") { buy(chosen) }
+                    Button("Köp · \(chosen.price)") { buy(chosen) }
                         .buttonStyle(ChunkyButtonStyle(fill: .white, shadow: shadow))
-                    Button("Place it") { place(chosen) }
+                    Button("Ställ ut") { place(chosen) }
                         .buttonStyle(ChunkyButtonStyle())
                         .disabled(store.state.count(of: chosen.id) == 0)
                         .opacity(store.state.count(of: chosen.id) == 0 ? 0.5 : 1)
@@ -212,8 +212,8 @@ struct DecorView: View {
 
     private func buy(_ item: Item) {
         switch store.perform({ state, _ in state.buy(item.id) }) {
-        case .bought: toaster.show("\(item.name) bought! Tap “Place it”.")
-        case .notEnoughCoins: toaster.show("Not enough coins yet. Keep caring to earn more!")
+        case .bought: toaster.show("\(item.name) köpt! Tryck på ”Ställ ut”.")
+        case .notEnoughCoins: toaster.show("Inte tillräckligt med mynt än. Ta hand om ditt kryp så tjänar du mer!")
         case .unknownItem: break
         }
     }

@@ -6,21 +6,21 @@ private typealias BathStep = BathSession.Step
 private extension BathSession.Step {
     var title: String {
         switch self {
-        case .fill: "Fill"
-        case .scrub: "Scrub"
-        case .rinse: "Rinse"
-        case .dry: "Dry"
-        case .done: "Done"
+        case .fill: "Fyll"
+        case .scrub: "Skrubba"
+        case .rinse: "Skölj"
+        case .dry: "Torka"
+        case .done: "Klar"
         }
     }
 
     var hint: String {
         switch self {
-        case .fill: "Turn the red tap to fill the tub."
-        case .scrub: "Pick up the sponge and scrub the mud off until it's all foamy."
-        case .rinse: "Turn the blue shower tap, then slide the shower head to wash the foam away."
-        case .dry: "Grab the towel and rub the water drops off."
-        case .done: "Squeaky clean and sparkly!"
+        case .fill: "Vrid på den röda kranen så fylls badkaret."
+        case .scrub: "Ta svampen och skrubba bort leran tills det skummar."
+        case .rinse: "Vrid på den blå duschkranen och dra duschen fram och tillbaka så sköljs skummet bort."
+        case .dry: "Ta handduken och gnugga bort vattendropparna."
+        case .done: "Skinande ren och glittrig!"
         }
     }
 }
@@ -136,7 +136,7 @@ struct BathView: View {
                 .bobbing(amount: 4)
                 .offset(y: duckHop ? -40 : 0)
                 .position(x: 880, y: layout.tubTop - 16)
-                .accessibilityLabel("Rubber duck")
+                .accessibilityLabel("Badanka")
             }
 
             FaucetView(open: tapOpen, waterTop: layout.tubTop + 6 - CGFloat(water) * 12, layout: layout, hint: session.step == .fill && !tapOpen) {
@@ -151,7 +151,7 @@ struct BathView: View {
                 .position(x: headX, y: layout.showerHeadY)
                 .allowsHitTesting(false)
 
-            ValveButton(on: showerOn, color: .skyDeep, identifier: "shower", label: "Shower tap", hint: session.step == .rinse && !showerOn) {
+            ValveButton(on: showerOn, color: .skyDeep, identifier: "shower", label: "Duschkran", hint: session.step == .rinse && !showerOn) {
                 toggleShower()
             }
             .position(layout.showerValve)
@@ -202,7 +202,7 @@ struct BathView: View {
         let size = layout.size
         return ZStack(alignment: .topLeading) {
             HStack {
-                RoundIconButton(systemName: "chevron.left", label: "Back home", shadow: shadow) { navigate(.home) }
+                RoundIconButton(systemName: "chevron.left", label: "Tillbaka hem", shadow: shadow) { navigate(.home) }
                 Spacer()
                 HStack(spacing: 8) {
                     ForEach(BathStep.allCases.dropLast(), id: \.self) { candidate in
@@ -222,7 +222,7 @@ struct BathView: View {
             .position(x: size.width / 2, y: 24 + 30)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Sparkle meter").font(.cute(18, .bold))
+                Text("Glittermätare").font(.cute(18, .bold))
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color(hex: 0xEAF3F0))
@@ -234,11 +234,11 @@ struct BathView: View {
                 Text(session.step.hint).font(.cute(15, .medium)).foregroundStyle(Color.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if session.step == .scrub {
                     Toggle(isOn: Binding(get: { useShampoo }, set: { toggleShampoo($0) })) {
-                        Text("Shampoo ×\(store.state.count(of: "shampoo"))").font(.cute(15))
+                        Text("Schampo ×\(store.state.count(of: "shampoo"))").font(.cute(15))
                     }
                     .tint(.lavenderDeep)
                 }
-                Text("+\(Rules.bathReward) coins when sparkly").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
+                Text("+\(Rules.bathReward) mynt när krypet glittrar").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(Color.butterLight))
             }
             .foregroundStyle(Color.ink)
@@ -248,7 +248,7 @@ struct BathView: View {
             .position(x: 24 + 105, y: size.height * 0.36)
 
             if session.step == .done {
-                Button("All clean! Back home") { navigate(.home) }
+                Button("Skinande ren! Gå hem") { navigate(.home) }
                     .buttonStyle(ChunkyButtonStyle())
                     .position(x: size.width / 2, y: size.height - 64)
             }
@@ -310,30 +310,30 @@ struct BathView: View {
         case .rinse where near(CGPoint(x: headX, y: layout.showerHeadY), 110):
             return .showerHead
         default:
-            if step == .scrub || step == .dry { say(step == .scrub ? "Grab the sponge!" : "Grab the towel!") }
+            if step == .scrub || step == .dry { say(step == .scrub ? "Ta svampen!" : "Ta handduken!") }
             return nil
         }
     }
 
     private func turnTap() {
         guard let session else { return }
-        guard session.step == .fill else { return say(session.water >= 1 ? "The tub is full!" : "Hmm?") }
+        guard session.step == .fill else { return say(session.water >= 1 ? "Badkaret är fullt!" : "Hmm?") }
         withAnimation(.spring(duration: 0.5, bounce: 0.3)) { tapOpen = true }
         self.session?.turnOnTap()
         SoundFX.play(.splash)
         Haptics.thump()
-        say("Ooh, warm water!")
+        say("Åh, varmt vatten!")
     }
 
     private func toggleShower() {
         guard let session else { return }
         guard session.step == .rinse || showerOn else {
-            return say(session.step.rawValue < BathStep.rinse.rawValue ? "Not yet, I'm still muddy!" : "I'm already rinsed!")
+            return say(session.step.rawValue < BathStep.rinse.rawValue ? "Inte än, jag är ju lerig!" : "Jag är redan sköljd!")
         }
         Haptics.thump()
         SoundFX.play(.splash)
         withAnimation(.spring(duration: 0.5, bounce: 0.3)) { showerOn.toggle() }
-        if showerOn { say(store.pet?.genome.has(.lovesBaths) == true ? "Wheee, rain!" : "Eek! Water!") }
+        if showerOn { say(store.pet?.genome.has(.lovesBaths) == true ? "Wiii, regn!" : "Iiih! Vatten!") }
     }
 
     private func squeakDuck() {
@@ -350,9 +350,9 @@ struct BathView: View {
         if !on { useShampoo = false; return }
         if store.state.count(of: "shampoo") > 0 {
             useShampoo = true
-            say("Bubbly shampoo!")
+            say("Bubbelschampo!")
         } else {
-            toaster.show("No shampoo. Find it in the market's bath aisle.")
+            toaster.show("Inget schampo. Det finns bland badsakerna i affären.")
         }
     }
 
@@ -390,13 +390,13 @@ struct BathView: View {
         held = nil
         switch step {
         case .scrub:
-            say("Scrub-a-dub-dub!")
+            say("Skrubbe-dubbe-dubb!")
         case .rinse:
             SoundFX.play(.giggle)
-            say("So foamy! Now the shower!")
+            say("Så skummigt! Nu duschen!")
         case .dry:
             withAnimation(.spring(duration: 0.5, bounce: 0.3)) { showerOn = false }
-            say(store.pet?.genome.has(.lovesBaths) == true ? "That was fun! Towel please!" : "Brrr! Towel please!")
+            say(store.pet?.genome.has(.lovesBaths) == true ? "Vad kul! Handduk, tack!" : "Brrr! Handduk, tack!")
         case .done:
             finish()
         case .fill:
@@ -411,12 +411,12 @@ struct BathView: View {
         SoundFX.play(.coin)
         shaking = true
         flyingDrops = (0..<18).map { _ in FlyingDrop(start: lastLayout.petCenter) }
-        say("*shake shake shake*")
+        say("*skak skak skak*")
         Task {
             try? await Task.sleep(for: .seconds(1.1))
             shaking = false
             towelPosition = nil
-            say(useShampoo ? "Extra sparkly!! Look at me shine!" : "Look how shiny I am!")
+            say(useShampoo ? "Extraglittrig!! Kolla hur jag glänser!" : "Kolla så blank jag är!")
             SoundFX.play(.bounce)
             draining = true
             withAnimation(.easeIn(duration: 2.2)) { drain = 0 }
@@ -425,7 +425,7 @@ struct BathView: View {
             try? await Task.sleep(for: .seconds(1.3))
             draining = false
         }
-        toaster.show("Bath done: +\(coins) coins!")
+        toaster.show("Badet är klart: +\(coins) mynt!")
     }
 
     private func playThrottled(_ effect: SoundFX.Effect, every seconds: Double) {
@@ -527,7 +527,7 @@ private struct ValveButton: View {
         .buttonStyle(SquishyButtonStyle())
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(label)
-        .accessibilityValue(on ? "On" : "Off")
+        .accessibilityValue(on ? "På" : "Av")
     }
 }
 
@@ -559,7 +559,7 @@ private struct FaucetView: View {
                     .allowsHitTesting(false)
             }
 
-            ValveButton(on: open, color: .coral, identifier: "tap", label: "Bath tap", hint: hint, action: action)
+            ValveButton(on: open, color: .coral, identifier: "tap", label: "Badkran", hint: hint, action: action)
                 .position(layout.faucetValve)
         }
         .animation(.easeOut(duration: 0.45), value: open)

@@ -57,16 +57,16 @@ struct AdoptView: View {
                         for (x, y) in [(11.0, 17.0), (20, 10), (30, 10), (38, 17)] { c.dot(x, y, 5.5, .coral) }
                     }
                     .frame(width: 48, height: 48)
-                    Text("Critter Corner").font(.cute(44, .bold))
+                    Text("Kryphörnan").font(.cute(44, .bold))
                 }
-                Text(store.state.memorial.isEmpty ? "Pick an egg. Every critter that hatches is one of a kind." : "Ready for a new friend? Pick an egg.")
+                Text(store.state.memorial.isEmpty ? "Välj ett ägg. Varje kryp som kläcks är helt unikt." : "Redo för en ny vän? Välj ett ägg.")
                     .font(.cute(20, .medium))
                     .foregroundStyle(Color.inkSoft)
             }
             Spacer()
             if !store.state.memorial.isEmpty {
                 Button { navigate(.memoriam) } label: {
-                    Label("Memories", systemImage: "heart.text.square.fill")
+                    Label("Minnen", systemImage: "heart.text.square.fill")
                 }
                 .buttonStyle(ChunkyButtonStyle(fill: .white, shadow: .lavender))
             }
@@ -76,7 +76,7 @@ struct AdoptView: View {
                     picked = 0
                 }
             } label: {
-                Label("New eggs", systemImage: "dice.fill")
+                Label("Nya ägg", systemImage: "dice.fill")
             }
             .buttonStyle(ChunkyButtonStyle(fill: .white, shadow: Color(hex: 0xF3E3D3)))
         }
@@ -87,7 +87,7 @@ struct AdoptView: View {
         let egg = eggs[picked]
         let parts = egg.name.split(separator: " ")
         return HStack(spacing: 10) {
-            Text("Name maker:").font(.cute(18, .medium)).foregroundStyle(Color.inkSoft)
+            Text("Namnmaskinen:").font(.cute(18, .medium)).foregroundStyle(Color.inkSoft)
             ForEach(parts.map(String.init), id: \.self) { part in
                 Text(part)
                     .font(.cute(18))
@@ -105,9 +105,9 @@ struct AdoptView: View {
                     .background(Circle().fill(.white))
             }
             .buttonStyle(SquishyButtonStyle())
-            .accessibilityLabel("New name")
+            .accessibilityLabel("Nytt namn")
             Spacer()
-            Button("Hatch \(egg.name)") { hatch(egg) }
+            Button("Kläck \(egg.name)") { hatch(egg) }
                 .buttonStyle(ChunkyButtonStyle())
                 .disabled(hatching)
         }

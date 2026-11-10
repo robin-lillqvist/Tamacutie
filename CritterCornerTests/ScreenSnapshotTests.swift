@@ -13,7 +13,7 @@ final class ScreenSnapshotTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: "save.json")
         store = GameStore(saveURL: url, defaults: UserDefaults(suiteName: UUID().uuidString)!)
         store.perform { state, now in
-            _ = state.adopt(genome: Genome(seed: 2024), name: "Mochi Starfizz", now: now)
+            _ = state.adopt(genome: Genome(seed: 2024), name: "Mochi Stjärnbubbel", now: now)
             state.earn(400)
             _ = state.feed("kibble", now: now.addingTimeInterval(-3 * 3600))
         }

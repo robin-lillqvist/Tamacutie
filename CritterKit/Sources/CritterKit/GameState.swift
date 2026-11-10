@@ -30,20 +30,20 @@ public struct MemorialEntry: Codable, Equatable, Identifiable, Sendable {
 
     public var epitaph: String {
         let loved: String = switch genome.traits.first {
-        case .glutton: "Never said no to a snack."
-        case .superCuddly: "Gave the best cuddles."
-        case .energetic, .parkLover: "Fastest fetcher in the park."
-        case .sleepyhead: "Champion napper."
-        case .shy: "Quiet, gentle and sweet."
-        case .fussyEater: "Only ate the very best fish."
-        case .independent: "Did things their own way."
-        case .lovesBaths: "Loved a bubbly bath."
-        case .curious: "Sniffed out every secret."
-        case nil: "A very good critter."
+        case .glutton: "Sa aldrig nej till ett mellanmål."
+        case .superCuddly: "Gav de allra bästa kramarna."
+        case .energetic, .parkLover: "Snabbast av alla i parken."
+        case .sleepyhead: "Mästare på tupplurar."
+        case .shy: "Tyst, snäll och söt."
+        case .fussyEater: "Åt bara den allra finaste fisken."
+        case .independent: "Gjorde allt på sitt eget sätt."
+        case .lovesBaths: "Älskade bubbelbad."
+        case .curious: "Nosade upp varenda hemlighet."
+        case nil: "Ett riktigt fint litet kryp."
         }
         let ending = switch cause {
-        case .starvation: "Missed us while we were away."
-        case .overeating: "One cupcake too many."
+        case .starvation: "Saknade oss medan vi var borta."
+        case .overeating: "En muffin för mycket."
         }
         return "\(loved) \(ending)"
     }

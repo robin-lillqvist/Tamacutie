@@ -105,7 +105,7 @@ final class GameStateTests: XCTestCase {
         let entry = game.memorial[0]
         XCTAssertEqual(entry.name, "Mochi Starfizz")
         XCTAssertEqual(entry.cause, .starvation)
-        XCTAssertTrue(entry.epitaph.contains("Missed us"))
+        XCTAssertTrue(entry.epitaph.contains("Saknade oss"))
         game.lightCandle(for: entry.id)
         XCTAssertEqual(game.memorial[0].candles, 1)
         XCTAssertTrue(game.adopt(genome: Genome(seed: 9), name: "Pip", now: t0 + hours(240)))

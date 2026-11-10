@@ -47,7 +47,7 @@ struct CritterView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
-        .accessibilityLabel(Text("A \(genome.palette.name.lowercased()) critter"))
+        .accessibilityLabel(Text("Ett kryp i färgen \(genome.palette.name.lowercased())"))
     }
 }
 
@@ -289,7 +289,7 @@ private struct CritterPainter {
                 fill(inner, .pink)
             }
         case .antennae:
-            let knob: Color = genome.palette.name == "Butter" ? .coral : .butter
+            let knob: Color = genome.palette.name == "Smör" ? .coral : .butter
             for side in [-1.0, 1.0] {
                 var path = Path()
                 path.move(to: CGPoint(x: 100 + side * 18, y: 62))

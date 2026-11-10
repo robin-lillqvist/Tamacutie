@@ -41,7 +41,7 @@ struct ParkView: View {
     @State private var petHop = false
     @State private var petWalking = false
     @State private var petFacingRight = true
-    @State private var bubble: String? = "Let's play!"
+    @State private var bubble: String? = "Kom, vi leker!"
     @State private var floating: [FloatingText] = []
     @State private var mounds: [Mound] = []
     @State private var digsLeft = 3
@@ -73,7 +73,7 @@ struct ParkView: View {
                     .buttonStyle(SquishyButtonStyle())
                     .disabled(mound.reward != nil || digsLeft == 0)
                     .position(x: mound.point.x, y: size.height * mound.point.y)
-                    .accessibilityLabel(mound.reward == nil ? "Dirt mound. Tap to dig." : "Dug up")
+                    .accessibilityLabel(mound.reward == nil ? "Jordhög. Tryck för att gräva." : "Uppgrävd")
                 }
             }
 
@@ -81,7 +81,7 @@ struct ParkView: View {
                 .frame(width: 150, height: 150)
                 .position(x: 1000, y: ground - 120)
                 .allowsHitTesting(false)
-            SpeechBubble(text: "\(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) wants to play!", tailOnLeft: false)
+            SpeechBubble(text: "\(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) vill leka!", tailOnLeft: false)
                 .position(x: 940, y: ground - 230)
 
             LiveCritterView(genome: pet.genome, expression: petHop || petWalking ? .excited : .happy, weight: pet.weight, walking: petWalking, facingRight: petFacingRight, blissful: petHop, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet))
@@ -104,7 +104,7 @@ struct ParkView: View {
                     }
                     .buttonStyle(SquishyButtonStyle())
                     .position(point)
-                    .accessibilityLabel("Frisbee. Tap to catch!")
+                    .accessibilityLabel("Frisbee. Tryck för att fånga!")
                 }
             }
 
@@ -118,9 +118,9 @@ struct ParkView: View {
     private func hud(size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
             HStack {
-                RoundIconButton(systemName: "chevron.left", label: "Back home", shadow: shadow) { goHome() }
+                RoundIconButton(systemName: "chevron.left", label: "Tillbaka hem", shadow: shadow) { goHome() }
                 Spacer()
-                TitlePill(title: "Sunny Meadow Park", shadow: shadow)
+                TitlePill(title: "Parken på Solängen", shadow: shadow)
                 Spacer()
                 CoinPill(coins: store.state.coins + coinsFound, shadow: shadow)
             }
@@ -129,24 +129,24 @@ struct ParkView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 if game == .fetch {
-                    Text("Fetch!").font(.cute(20, .bold))
+                    Text("Apport!").font(.cute(20, .bold))
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("\(catches)").font(.cute(44, .bold))
-                        Text("catches").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
+                        Text("fångade").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
                     }
                     if combo >= 2 {
-                        Text("Combo ×\(combo)").font(.cute(16, .bold)).padding(.horizontal, 12).padding(.vertical, 6)
+                        Text("Kombo ×\(combo)").font(.cute(16, .bold)).padding(.horizontal, 12).padding(.vertical, 6)
                             .background(Capsule().fill(Color.pinkLight))
                     }
-                    Text("Throw it, then tap the frisbee to catch it!").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
+                    Text("Kasta, och tryck sen på frisbeen för att fånga den!").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("Dig!").font(.cute(20, .bold))
-                    Text("\(digsLeft) digs left").font(.cute(28, .bold))
-                    Text("Tap a dirt mound to dig for treasure.").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
+                    Text("Gräv!").font(.cute(20, .bold))
+                    Text("\(digsLeft) kvar").font(.cute(28, .bold))
+                    Text("Tryck på en jordhög för att gräva efter skatter.").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("Found: \(coinsFound) coins").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
+                Text("Hittat: \(coinsFound) mynt").font(.cute(15)).padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(Color.butterLight))
             }
             .foregroundStyle(Color.ink)
@@ -156,16 +156,16 @@ struct ParkView: View {
             .position(x: 24 + 115, y: 130 + 110)
 
             Dock(shadow: shadow) {
-                DockButton(title: flight == nil ? "Throw" : "Flying!", systemName: "circle.circle.fill", fill: .pinkLight, highlighted: game == .fetch, width: 110) {
+                DockButton(title: flight == nil ? "Kasta" : "Flyger!", systemName: "circle.circle.fill", fill: .pinkLight, highlighted: game == .fetch, width: 110) {
                     game = .fetch
                     throwFrisbee()
                 }
-                DockButton(title: "Dig", systemName: "sparkle.magnifyingglass", fill: Color(hex: 0xF3E6D4), highlighted: game == .dig, width: 110) {
+                DockButton(title: "Gräv", systemName: "sparkle.magnifyingglass", fill: Color(hex: 0xF3E6D4), highlighted: game == .dig, width: 110) {
                     game = .dig
                     flight = nil
-                    say(digsLeft > 0 ? "I smell treasure!" : "All dug out!")
+                    say(digsLeft > 0 ? "Jag luktar skatter!" : "Allt är uppgrävt!")
                 }
-                DockButton(title: "Go home", systemName: "house.fill", fill: Color(hex: 0xE3F7DC), width: 110) { goHome() }
+                DockButton(title: "Gå hem", systemName: "house.fill", fill: Color(hex: 0xE3F7DC), width: 110) { goHome() }
             }
             .position(x: size.width / 2, y: size.height - 72)
         }
@@ -183,7 +183,7 @@ struct ParkView: View {
             guard flight?.id == launch.id else { return }
             flight = nil
             combo = 0
-            say("Aww, missed it!")
+            say("Åh nej, missade!")
         }
     }
 
@@ -205,7 +205,7 @@ struct ParkView: View {
             try? await Task.sleep(for: .seconds(1))
             floating.removeAll()
         }
-        say(combo >= 3 ? "Combo ×\(combo)! I'm the best!" : "Got it!")
+        say(combo >= 3 ? "Kombo ×\(combo)! Jag är bäst!" : "Tog den!")
     }
 
     // MARK: Dig
@@ -225,7 +225,7 @@ struct ParkView: View {
         Haptics.tap()
         SoundFX.play(reward > 0 ? .coin : .boop)
         run(to: mound.point.x, duration: 0.6)
-        say(reward == 0 ? "Just a flower. Pretty!" : (reward >= 5 ? "Treasure!!" : "Ooh, coins!"))
+        say(reward == 0 ? "Bara en blomma. Så fin!" : (reward >= 5 ? "En skatt!!" : "Åh, mynt!"))
     }
 
     private func run(to x: CGFloat, duration: Double) {
@@ -243,7 +243,7 @@ struct ParkView: View {
     private func goHome() {
         let found = coinsFound
         store.perform { state, now in state.finishPark(coinsFound: found, now: now) }
-        if found > 0 { toaster.show("What a walk! +\(found) coins") }
+        if found > 0 { toaster.show("Vilken promenad! +\(found) mynt") }
         navigate(.home)
     }
 

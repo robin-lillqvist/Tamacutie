@@ -28,16 +28,16 @@ public struct Palette: Codable, Equatable, Sendable {
     public let stage: UInt32
 
     public static let all: [Palette] = [
-        Palette(name: "Bubblegum", body: 0xFF9EB5, belly: 0xFFD1DC, shade: 0xF27D9B, stage: 0xFFEFF3),
+        Palette(name: "Tuggummi", body: 0xFF9EB5, belly: 0xFFD1DC, shade: 0xF27D9B, stage: 0xFFEFF3),
         Palette(name: "Mint", body: 0x7ED9C3, belly: 0xC9F2E6, shade: 0x5CC2A8, stage: 0xE6F8F2),
-        Palette(name: "Lavender", body: 0xC3A8FF, belly: 0xE2D6FF, shade: 0xA98BFF, stage: 0xF1EAFF),
-        Palette(name: "Butter", body: 0xFFD66B, belly: 0xFFF1C4, shade: 0xF5B83D, stage: 0xFFF6D9),
-        Palette(name: "Sky", body: 0x8EC9FF, belly: 0xD6ECFF, shade: 0x5AA9F0, stage: 0xE4F2FF),
-        Palette(name: "Peach", body: 0xFFB38A, belly: 0xFFE0CC, shade: 0xF2956A, stage: 0xFFEDE2),
-        Palette(name: "Tangerine", body: 0xFF9550, belly: 0xFFE2CC, shade: 0xEB7432, stage: 0xFFEADF),
-        Palette(name: "Grape", body: 0xA285EE, belly: 0xE6DCFF, shade: 0x8563DE, stage: 0xF0EAFF),
-        Palette(name: "Leaf", body: 0x8FD16B, belly: 0xE0F5D1, shade: 0x6DB64A, stage: 0xEAF7E2),
-        Palette(name: "Cherry", body: 0xFF6F86, belly: 0xFFD8DF, shade: 0xE5506A, stage: 0xFFE8EC),
+        Palette(name: "Lavendel", body: 0xC3A8FF, belly: 0xE2D6FF, shade: 0xA98BFF, stage: 0xF1EAFF),
+        Palette(name: "Smör", body: 0xFFD66B, belly: 0xFFF1C4, shade: 0xF5B83D, stage: 0xFFF6D9),
+        Palette(name: "Himmel", body: 0x8EC9FF, belly: 0xD6ECFF, shade: 0x5AA9F0, stage: 0xE4F2FF),
+        Palette(name: "Persika", body: 0xFFB38A, belly: 0xFFE0CC, shade: 0xF2956A, stage: 0xFFEDE2),
+        Palette(name: "Mandarin", body: 0xFF9550, belly: 0xFFE2CC, shade: 0xEB7432, stage: 0xFFEADF),
+        Palette(name: "Druva", body: 0xA285EE, belly: 0xE6DCFF, shade: 0x8563DE, stage: 0xF0EAFF),
+        Palette(name: "Löv", body: 0x8FD16B, belly: 0xE0F5D1, shade: 0x6DB64A, stage: 0xEAF7E2),
+        Palette(name: "Körsbär", body: 0xFF6F86, belly: 0xFFD8DF, shade: 0xE5506A, stage: 0xFFE8EC),
     ]
 }
 
@@ -46,16 +46,16 @@ public enum Trait: String, Codable, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .glutton: "Glutton"
-        case .superCuddly: "Super cuddly"
-        case .energetic: "Energetic"
-        case .parkLover: "Park lover"
-        case .sleepyhead: "Sleepyhead"
-        case .shy: "Shy"
-        case .fussyEater: "Fussy eater"
-        case .independent: "Independent"
-        case .lovesBaths: "Loves baths"
-        case .curious: "Curious"
+        case .glutton: "Matvrak"
+        case .superCuddly: "Supergosig"
+        case .energetic: "Pigg"
+        case .parkLover: "Älskar parken"
+        case .sleepyhead: "Sjusovare"
+        case .shy: "Blyg"
+        case .fussyEater: "Kräsen"
+        case .independent: "Självständig"
+        case .lovesBaths: "Älskar bad"
+        case .curious: "Nyfiken"
         }
     }
 }

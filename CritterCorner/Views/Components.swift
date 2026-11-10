@@ -40,7 +40,7 @@ struct CoinPill: View {
         .frame(height: 58)
         .card(shadow: shadow, radius: 29)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(coins) coins")
+        .accessibilityLabel("\(coins) mynt")
     }
 }
 
@@ -168,7 +168,7 @@ struct NeedBar: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title): \(Int(value)) percent")
+        .accessibilityLabel("\(title): \(Int(value)) procent")
     }
 }
 

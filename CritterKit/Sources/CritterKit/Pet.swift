@@ -56,11 +56,11 @@ public enum WeightStage: String, Codable, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .starving: "Starving"
-        case .thin: "A bit thin"
-        case .healthy: "Just right"
-        case .chubby: "Chubby"
-        case .obese: "Way too round"
+        case .starving: "Utsvulten"
+        case .thin: "Lite smal"
+        case .healthy: "Lagom"
+        case .chubby: "Lite rund"
+        case .obese: "Alldeles för rund"
         }
     }
 

@@ -28,9 +28,9 @@ final class PlaytimeUITests: XCTestCase {
     }
 
     func testFetchWithTheBall() {
-        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Leka"].waitForExistence(timeout: 5))
         snap("01-home")
-        app.buttons["Play"].tap()
+        app.buttons["Leka"].tap()
         let ball = app.descendants(matching: .any)["ball"].firstMatch
         XCTAssertTrue(ball.waitForExistence(timeout: 3))
         snap("02-play-ready")
@@ -45,9 +45,9 @@ final class PlaytimeUITests: XCTestCase {
     }
 
     func testBubblesPettingAndFeeding() {
-        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
-        app.buttons["Play"].tap()
-        app.buttons["Bubbles"].tap()
+        XCTAssertTrue(app.buttons["Leka"].waitForExistence(timeout: 5))
+        app.buttons["Leka"].tap()
+        app.buttons["Bubblor"].tap()
         for x in [0.35, 0.65, 0.8] {
             point(x, 0.4).tap()
         }
@@ -55,7 +55,7 @@ final class PlaytimeUITests: XCTestCase {
         snap("06-bubbles")
         Thread.sleep(forTimeInterval: 4)
         snap("07-bubbles-later")
-        app.buttons["Done"].tap()
+        app.buttons["Klar"].tap()
 
         let critter = app.descendants(matching: .any)["critter"].firstMatch
         XCTAssertTrue(critter.waitForExistence(timeout: 3))
@@ -63,7 +63,7 @@ final class PlaytimeUITests: XCTestCase {
         center.press(forDuration: 0.05, thenDragTo: critter.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.45)))
         snap("08-petting")
 
-        app.buttons["Feed"].tap()
+        app.buttons["Mata"].tap()
         let kibble = app.descendants(matching: .any)["food-kibble"].firstMatch
         XCTAssertTrue(kibble.waitForExistence(timeout: 3))
         snap("09-fridge")

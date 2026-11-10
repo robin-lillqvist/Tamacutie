@@ -17,19 +17,19 @@ enum Reminders {
         func remind(_ id: String, after hours: Double, _ body: String) {
             guard hours > 0 else { return }
             let content = UNMutableNotificationContent()
-            content.title = "Critter Corner"
+            content.title = "Kryphörnan"
             content.body = body
             content.sound = .default
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60, hours * 3600), repeats: false)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }
 
-        remind("hungry", after: (pet.needs.hunger - 20) / Rules.hungerDecay, "\(first) is getting hungry!")
-        remind("thirsty", after: (pet.needs.thirst - 20) / Rules.thirstDecay, "\(first)'s water bowl is almost empty.")
-        remind("lonely", after: 12, "\(first) misses you. Come say hi!")
-        remind("worried", after: 30, "\(first) hasn't eaten in a long time and is getting thin. Please come back!")
+        remind("hungry", after: (pet.needs.hunger - 20) / Rules.hungerDecay, "\(first) börjar bli hungrig!")
+        remind("thirsty", after: (pet.needs.thirst - 20) / Rules.thirstDecay, "\(first)s vattenskål är nästan tom.")
+        remind("lonely", after: 12, "\(first) saknar dig. Kom och säg hej!")
+        remind("worried", after: 30, "\(first) har inte ätit på länge och börjar bli smal. Snälla, kom tillbaka!")
         if pet.weightStage.isDangerous {
-            remind("danger", after: 1, "\(first) is not feeling well. Check on them!")
+            remind("danger", after: 1, "\(first) mår inte bra. Kom och titta till!")
         }
     }
 }

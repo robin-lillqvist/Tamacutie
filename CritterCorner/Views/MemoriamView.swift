@@ -13,20 +13,20 @@ struct FarewellView: View {
                 VStack(spacing: 20) {
                     LiveCritterView(genome: pet.genome, expression: .dead, weight: Rules.healthyWeight, halo: true)
                         .frame(width: 300, height: 300)
-                    Text("\(pet.name) has floated off to Cloud Meadow")
+                    Text("\(pet.name) har svävat iväg till Molnängen")
                         .font(.cute(36, .bold))
                         .multilineTextAlignment(.center)
                     Text(pet.causeOfDeath == .overeating
-                         ? "Too many treats made \(pet.pronounName)'s tummy too round. Little critters need just the right amount of food."
-                         : "\(pet.pronounName) went too long without food and water. Little critters need care every day.")
+                         ? "För mycket godis gjorde \(pet.pronounName)s mage alldeles för rund. Små kryp behöver lagom mycket mat."
+                         : "\(pet.pronounName) var utan mat och vatten alldeles för länge. Små kryp behöver omsorg varje dag.")
                         .font(.cute(21, .medium))
                         .foregroundStyle(Color(hex: 0x5E4D6E))
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 700)
-                    Text("\(pet.pronounName) lived \(pet.ageInDays(at: store.now)) days and will always be remembered.")
+                    Text("\(pet.pronounName) levde i \(pet.ageInDays(at: store.now)) dag\(pet.ageInDays(at: store.now) == 1 ? "" : "ar") och kommer alltid att finnas i våra hjärtan.")
                         .font(.cute(19, .medium))
                         .foregroundStyle(Color(hex: 0x5E4D6E))
-                    Button("Remember \(pet.pronounName)") {
+                    Button("Minns \(pet.pronounName)") {
                         store.perform { state, _ in state.sayGoodbye() }
                         navigate(.memoriam)
                     }
@@ -51,18 +51,18 @@ struct MemoriamView: View {
                 MemorialSky(size: size)
                 VStack(spacing: 18) {
                     HStack {
-                        RoundIconButton(systemName: "chevron.left", label: "Back", shadow: Color(hex: 0xD2C4F5)) { navigate(.home) }
+                        RoundIconButton(systemName: "chevron.left", label: "Tillbaka", shadow: Color(hex: 0xD2C4F5)) { navigate(.home) }
                         Spacer()
                         VStack(spacing: 2) {
-                            Text("In Memoriam").font(.cute(40, .bold))
-                            Text("Forever part of Critter Corner").font(.cute(18, .medium)).foregroundStyle(Color(hex: 0x5E4D6E))
+                            Text("Till minne").font(.cute(40, .bold))
+                            Text("För alltid en del av Kryphörnan").font(.cute(18, .medium)).foregroundStyle(Color(hex: 0x5E4D6E))
                         }
                         Spacer()
                         Color.clear.frame(width: 60, height: 60)
                     }
                     if store.state.memorial.isEmpty {
                         Spacer()
-                        Text("No critters here yet. Keep yours happy and healthy!")
+                        Text("Inga kryp här än. Se till att ditt är glatt och friskt!")
                             .font(.cute(24, .medium))
                             .foregroundStyle(Color(hex: 0x5E4D6E))
                         Spacer()
@@ -80,7 +80,7 @@ struct MemoriamView: View {
                         }
                     }
                     if store.pet == nil {
-                        Button("Adopt a new egg") { navigate(.home) }
+                        Button("Välj ett nytt ägg") { navigate(.home) }
                             .buttonStyle(ChunkyButtonStyle())
                     }
                 }
@@ -106,7 +106,7 @@ private struct Polaroid: View {
                 .frame(height: 230)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: entry.genome.palette.stage)))
             Text(entry.name).font(.cute(25, .bold)).lineLimit(1).minimumScaleFactor(0.7)
-            Text("Lived \(entry.daysLived) day\(entry.daysLived == 1 ? "" : "s") · \(entry.deathDate.formatted(.dateTime.month(.wide).year()))")
+            Text("Levde \(entry.daysLived) dag\(entry.daysLived == 1 ? "" : "ar") · \(entry.deathDate.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "sv_SE"))))")
                 .font(.cute(16, .medium))
                 .foregroundStyle(Color(hex: 0x5E4D6E))
             Text(entry.epitaph)
@@ -116,7 +116,7 @@ private struct Polaroid: View {
             Button(action: onCandle) {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill").foregroundStyle(Color.butterDeep)
-                    Text(entry.candles == 0 ? "Light a candle" : "\(entry.candles) candle\(entry.candles == 1 ? "" : "s")")
+                    Text(entry.candles == 0 ? "Tänd ett ljus" : "\(entry.candles) ljus")
                 }
                 .font(.cute(16))
                 .foregroundStyle(Color.ink)
@@ -172,9 +172,9 @@ struct AboutPetView: View {
     var body: some View {
         VStack(spacing: 18) {
             HStack {
-                Text("All about \(pet.pronounName)").font(.cute(30, .bold))
+                Text("Allt om \(pet.pronounName)").font(.cute(30, .bold))
                 Spacer()
-                Button("Done") { dismiss() }.buttonStyle(ChunkyButtonStyle(fill: .butter, shadow: .butterDeep))
+                Button("Klar") { dismiss() }.buttonStyle(ChunkyButtonStyle(fill: .butter, shadow: .butterDeep))
             }
             HStack(alignment: .top, spacing: 24) {
                 LiveCritterView(genome: pet.genome, expression: pet.expression(at: now), weight: pet.weight, shine: pet.shine(at: now), condition: pet.condition(at: now), coat: .everyday(for: pet))
@@ -182,21 +182,21 @@ struct AboutPetView: View {
                     .background(RoundedRectangle(cornerRadius: 28).fill(Color(hex: pet.genome.palette.stage)))
                 VStack(alignment: .leading, spacing: 10) {
                     Text(pet.name).font(.cute(26, .bold))
-                    Text("Day \(pet.ageInDays(at: now) + 1) · \(pet.genome.palette.name) critter").font(.cute(18, .medium)).foregroundStyle(Color.inkSoft)
+                    Text("Dag \(pet.ageInDays(at: now) + 1) · Färg: \(pet.genome.palette.name.lowercased())").font(.cute(18, .medium)).foregroundStyle(Color.inkSoft)
                     HStack {
                         ForEach(pet.genome.traits, id: \.self) { trait in
                             Text(trait.title).font(.cute(16)).padding(.horizontal, 12).padding(.vertical, 5)
                                 .background(Capsule().fill(Color(hex: pet.genome.palette.stage)))
                         }
                     }
-                    Text("Weight: \(pet.weightStage.title)").font(.cute(20, .bold)).padding(.top, 6)
+                    Text("Vikt: \(pet.weightStage.title.lowercased())").font(.cute(20, .bold)).padding(.top, 6)
                     WeightMeter(weight: pet.weight)
                     Text(moodLine).font(.cute(17, .medium)).foregroundStyle(Color.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Good to know").font(.cute(20, .bold))
-                Text("• Time passes for real, even when the game is closed.\n• Too little food makes \(pet.pronounName) thin. Too many treats make \(pet.pronounName) round. Both are dangerous.\n• After a long time apart, \(pet.pronounName) will be extra cuddly. Once full of love, \(pet.pronounName) wants some space.\n• Scoop the poop! A dirty room makes critters sick.")
+                Text("Bra att veta").font(.cute(20, .bold))
+                Text("• Tiden går på riktigt, även när spelet är stängt.\n• För lite mat gör \(pet.pronounName) smal. För mycket godis gör \(pet.pronounName) rund. Båda är farliga.\n• Efter en lång tid ifrån varandra vill \(pet.pronounName) gosa extra mycket. När \(pet.pronounName) är full av kärlek vill \(pet.pronounName) vara ifred en stund.\n• Plocka upp bajset! Ett smutsigt rum gör kryp sjuka.")
                     .font(.cute(17, .medium))
                     .foregroundStyle(Color.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
@@ -211,15 +211,15 @@ struct AboutPetView: View {
 
     private var moodLine: String {
         switch pet.expression(at: now) {
-        case .excited: "\(pet.pronounName) missed you and wants all the cuddles!"
-        case .ignoring: "\(pet.pronounName) has had enough cuddles for now."
-        case .asleep: "Shh… sweet dreams."
-        case .sick: "\(pet.pronounName) feels sick. Medicine helps, and so does a clean room."
-        case .hungry: "\(pet.pronounName) is hungry or thirsty."
-        case .sleepy: "\(pet.pronounName) is getting sleepy."
-        case .sad: "\(pet.pronounName) is not feeling great."
-        case .happy: "\(pet.pronounName) is very happy!"
-        case .content, .dead: "\(pet.pronounName) is doing fine."
+        case .excited: "\(pet.pronounName) har saknat dig och vill ha massor av gos!"
+        case .ignoring: "\(pet.pronounName) har fått nog med gos för stunden."
+        case .asleep: "Sch… sov så gott."
+        case .sick: "\(pet.pronounName) är sjuk. Medicin hjälper, och ett rent rum också."
+        case .hungry: "\(pet.pronounName) är hungrig eller törstig."
+        case .sleepy: "\(pet.pronounName) börjar bli sömnig."
+        case .sad: "\(pet.pronounName) mår inte så bra."
+        case .happy: "\(pet.pronounName) är jätteglad!"
+        case .content, .dead: "\(pet.pronounName) mår bra."
         }
     }
 }
@@ -243,6 +243,6 @@ struct WeightMeter: View {
             }
         }
         .frame(width: 360, height: 24)
-        .accessibilityLabel("Weight meter")
+        .accessibilityLabel("Viktmätare")
     }
 }

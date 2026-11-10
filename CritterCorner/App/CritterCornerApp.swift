@@ -8,6 +8,7 @@ struct CritterCornerApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .environment(\.locale, Locale(identifier: "sv_SE"))
         }
     }
 }

@@ -1,17 +1,17 @@
-/// Cute first name + an epic two-part surname: "Mochi" + "Star" + "fizz".
+/// Cute first name + an epic two-part surname: "Mochi" + "Stjärn" + "bubbel".
 public enum NameGenerator {
     public static let firstNames = [
         "Mochi", "Zuko", "Pip", "Kiki", "Bao", "Nori", "Taro", "Yuzu", "Miso", "Boba",
-        "Pudding", "Sprout", "Tofu", "Kiwi", "Juno", "Biscuit", "Pebble", "Nugget", "Ziggy", "Momo",
-        "Peanut", "Luma", "Wasabi", "Coco", "Fig", "Dumpling", "Poppy", "Bean", "Suki", "Bloop",
+        "Pudding", "Smulan", "Tofu", "Kiwi", "Juno", "Kexet", "Pärlan", "Pyret", "Ziggy", "Momo",
+        "Nötis", "Luma", "Wasabi", "Coco", "Fia", "Bullen", "Poppy", "Mulle", "Suki", "Blopp",
     ]
     public static let surnameStarts = [
-        "Star", "Moon", "Thunder", "Glimmer", "Wobble", "Cloud", "Sparkle", "Comet", "Velvet", "Honey",
-        "Pixel", "Rainbow", "Frost", "Sunny", "Nebu", "Twinkle", "Marsh", "Cosmo", "Puddle", "Dream",
+        "Stjärn", "Mån", "Åsk", "Glitter", "Vingel", "Moln", "Gnist", "Komet", "Sammet", "Honungs",
+        "Pixel", "Regnbågs", "Frost", "Sol", "Kosmo", "Blänk", "Mys", "Pöl", "Dröm", "Snö",
     ]
     public static let surnameEnds = [
-        "fizz", "bean", "puff", "fin", "sprout", "whisk", "paws", "bloom", "dust", "toes",
-        "wiggle", "drop", "berry", "lon", "snout", "pop", "fluff", "glow", "boots", "nibble",
+        "bubbel", "böna", "puff", "fena", "tass", "blomma", "nos", "pop", "fluff", "glans",
+        "stövel", "knapp", "droppe", "bär", "kula", "mums", "plopp", "kind", "vippa", "tuss",
     ]
 
     public static func name(seed: UInt64) -> String {

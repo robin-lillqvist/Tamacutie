@@ -90,9 +90,9 @@ struct RootView: View {
         let gift = store.perform { state, now in state.claimDailyGift(now: now) }
         let name = store.pet?.pronounName ?? ""
         switch (missed, gift) {
-        case (true, let gift?): toaster.show("\(name) missed you so much! Daily gift: +\(gift) coins")
-        case (true, nil): toaster.show("\(name) missed you so much!")
-        case (false, let gift?): toaster.show("Daily gift: +\(gift) coins!")
+        case (true, let gift?): toaster.show("\(name) har saknat dig jättemycket! Dagens present: +\(gift) mynt")
+        case (true, nil): toaster.show("\(name) har saknat dig jättemycket!")
+        case (false, let gift?): toaster.show("Dagens present: +\(gift) mynt!")
         case (false, nil): break
         }
     }

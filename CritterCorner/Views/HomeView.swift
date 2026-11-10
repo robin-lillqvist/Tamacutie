@@ -89,7 +89,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(SquishyButtonStyle())
                 .position(point)
-                .accessibilityLabel("Poop. Tap to scoop it up.")
+                .accessibilityLabel("Bajs. Tryck för att plocka upp det.")
             }
 
             if let playground {
@@ -117,7 +117,7 @@ struct HomeView: View {
                     .position(x: playground.ball.x, y: playground.ball.y)
                     .gesture(ballGesture)
                     .accessibilityIdentifier("ball")
-                    .accessibilityLabel("Ball. Flick it to throw.")
+                    .accessibilityLabel("Boll. Svep för att kasta den.")
             }
 
             if pet.isAsleep {
@@ -200,7 +200,7 @@ struct HomeView: View {
         .position(center)
         .accessibilityElement()
         .accessibilityIdentifier("critter")
-        .accessibilityLabel("\(pet.name). Stroke to pet, tap quickly to tickle.")
+        .accessibilityLabel("\(pet.name). Stryk för att klappa, tryck snabbt för att kittla.")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { stroke(at: center) }
     }
@@ -233,7 +233,7 @@ struct HomeView: View {
                         .background(Circle().fill(Color(hex: pet.genome.palette.stage)))
                     VStack(alignment: .leading, spacing: 0) {
                         Text(pet.name).font(.cute(22, .bold))
-                        Text("Day \(pet.ageInDays(at: store.now) + 1) · \(pet.weightStage.title)")
+                        Text("Dag \(pet.ageInDays(at: store.now) + 1) · \(pet.weightStage.title)")
                             .font(.cute(15, .medium))
                             .foregroundStyle(pet.weightStage.isDangerous ? Color.coralDeep : Color.inkSoft)
                     }
@@ -251,7 +251,7 @@ struct HomeView: View {
                 .position(x: 24 + 118, y: 116 + 200)
 
             if pet.isSick {
-                Button("Give medicine") { giveMedicine() }
+                Button("Ge medicin") { giveMedicine() }
                     .buttonStyle(ChunkyButtonStyle(fill: .mint, shadow: .mintDeep))
                     .position(x: 24 + 118, y: 116 + 440)
             }
@@ -261,7 +261,7 @@ struct HomeView: View {
                     Button {
                         let amount = store.perform { state, _ in state.collectPiggyBank() }
                         Haptics.success()
-                        toaster.show("\(pet.pronounName)'s piggy bank: +\(amount) coins!")
+                        toaster.show("\(pet.pronounName)s spargris: +\(amount) mynt!")
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "dollarsign.bank.building.fill")
@@ -274,7 +274,7 @@ struct HomeView: View {
                         .card(fill: .butterLight, radius: 29)
                     }
                     .buttonStyle(SquishyButtonStyle())
-                    .accessibilityLabel("Collect piggy bank coins")
+                    .accessibilityLabel("Ta mynten från spargrisen")
                 }
                 ClockPill(now: store.now)
                 CoinPill(coins: store.state.coins)
@@ -308,29 +308,29 @@ struct HomeView: View {
 
     private func dock(pet: Pet, layout: RoomLayout) -> some View {
         Dock {
-            DockButton(title: "Feed", systemName: "fork.knife", fill: .peachLight, highlighted: showFridge || pet.needs.hunger < 25) {
+            DockButton(title: "Mata", systemName: "fork.knife", fill: .peachLight, highlighted: showFridge || pet.needs.hunger < 25) {
                 withAnimation(.spring) { showFridge.toggle() }
             }
-            DockButton(title: "Water", systemName: "drop.fill", fill: .skyLight, highlighted: pet.needs.thirst < 25) { refillWater() }
-            DockButton(title: "Play", systemName: "tennisball.fill", fill: .butterLight, highlighted: pet.needs.fun < 25) { startPlay(.ball, layout: layout) }
-            DockButton(title: pet.isAsleep ? "Wake" : "Sleep", systemName: pet.isAsleep ? "sun.max.fill" : "moon.zzz.fill", fill: Color(hex: 0xECE4FF), highlighted: pet.needs.energy < 20 && !pet.isAsleep) { toggleSleep() }
-            DockButton(title: "Bath", systemName: "bathtub.fill", fill: .mintLight, highlighted: pet.needs.hygiene < 25) { goOut(.bath) }
-            DockButton(title: "Park", systemName: "tree.fill", fill: Color(hex: 0xE3F7DC)) { goOut(.park) }
-            DockButton(title: "Shop", systemName: "basket.fill", fill: .pinkLight) { navigate(.market) }
-            DockButton(title: "Decor", systemName: "sofa.fill", fill: .lavenderLight) { navigate(.decor) }
-            DockButton(title: "Memories", systemName: "heart.text.square.fill", fill: Color(hex: 0xF7F2FF)) { navigate(.memoriam) }
+            DockButton(title: "Vatten", systemName: "drop.fill", fill: .skyLight, highlighted: pet.needs.thirst < 25) { refillWater() }
+            DockButton(title: "Leka", systemName: "tennisball.fill", fill: .butterLight, highlighted: pet.needs.fun < 25) { startPlay(.ball, layout: layout) }
+            DockButton(title: pet.isAsleep ? "Väck" : "Sova", systemName: pet.isAsleep ? "sun.max.fill" : "moon.zzz.fill", fill: Color(hex: 0xECE4FF), highlighted: pet.needs.energy < 20 && !pet.isAsleep) { toggleSleep() }
+            DockButton(title: "Bada", systemName: "bathtub.fill", fill: .mintLight, highlighted: pet.needs.hygiene < 25) { goOut(.bath) }
+            DockButton(title: "Parken", systemName: "tree.fill", fill: Color(hex: 0xE3F7DC)) { goOut(.park) }
+            DockButton(title: "Handla", systemName: "basket.fill", fill: .pinkLight) { navigate(.market) }
+            DockButton(title: "Inred", systemName: "sofa.fill", fill: .lavenderLight) { navigate(.decor) }
+            DockButton(title: "Minnen", systemName: "heart.text.square.fill", fill: Color(hex: 0xF7F2FF)) { navigate(.memoriam) }
         }
     }
 
     private var playDock: some View {
         Dock {
-            DockButton(title: "Ball", systemName: "tennisball.fill", fill: .butterLight, highlighted: toy == .ball, width: 110) {
+            DockButton(title: "Boll", systemName: "tennisball.fill", fill: .butterLight, highlighted: toy == .ball, width: 110) {
                 switchToy(.ball)
             }
-            DockButton(title: "Bubbles", systemName: "bubbles.and.sparkles.fill", fill: .skyLight, highlighted: toy == .bubbles, width: 110) {
+            DockButton(title: "Bubblor", systemName: "bubbles.and.sparkles.fill", fill: .skyLight, highlighted: toy == .bubbles, width: 110) {
                 switchToy(.bubbles)
             }
-            DockButton(title: "Done", systemName: "checkmark.circle.fill", fill: .mintLight, width: 110) { stopPlay() }
+            DockButton(title: "Klar", systemName: "checkmark.circle.fill", fill: .mintLight, width: 110) { stopPlay() }
         }
     }
 
@@ -347,21 +347,21 @@ struct HomeView: View {
             }
             if pet.needs.hunger < 35 {
                 await walk(to: 860)
-                say("Is there any food?")
+                say("Finns det nån mat?")
             } else if pet.needs.thirst < 35 {
                 await walk(to: 980)
-                say("So thirsty…")
+                say("Så törstig…")
             } else if pet.needs.energy < 25 {
                 await walk(to: RoomLayout.bedX + 60)
-                say("Yaaawn…")
+                say("Gäääsp…")
             } else if pet.needs.fun < 30, Bool.random() {
-                say(["Play with me!", "I'm bored…", "Ball? Ball!"].randomElement()!)
+                say(["Lek med mig!", "Jag har så tråkigt…", "Boll? Boll!"].randomElement()!)
             } else if Int.random(in: 0..<3) == 0 {
                 await lookAround()
             } else {
                 await walk(to: CGFloat.random(in: 420...860))
                 if Int.random(in: 0..<4) == 0 {
-                    say(["La la la~", "Hmm hmm~", "*sniff sniff*", "What a nice day!", "♪ ♫"].randomElement()!)
+                    say(["La la la~", "Hmm hmm~", "*sniff sniff*", "Vilken fin dag!", "♪ ♫"].randomElement()!)
                 }
             }
         }
@@ -396,7 +396,7 @@ struct HomeView: View {
     private func startPlay(_ chosen: Toy, layout: RoomLayout) {
         guard let pet = store.pet else { return }
         if pet.isAsleep { return say("Zzz…") }
-        if pet.needs.energy < 10 { return say("Too tired to play…") }
+        if pet.needs.energy < 10 { return say("För trött för att leka…") }
         var config = Playground.Config(floorY: layout.petCenter.y + 118, leftX: 60, rightX: layout.size.width - 60, homeX: 600, ceilingY: 150)
         config.critterSpeed = 380 + pet.needs.energy * 2
         withAnimation(.spring) {
@@ -404,20 +404,20 @@ struct HomeView: View {
             playground = Playground(config: config, critterX: critterX)
             toy = chosen
         }
-        say(chosen == .ball ? "Ooh, the ball! Throw it!" : "Bubbles! Tap to blow some!")
+        say(chosen == .ball ? "Åh, bollen! Kasta den!" : "Bubblor! Tryck så blåser vi!")
         Haptics.tap()
     }
 
     private func switchToy(_ chosen: Toy) {
         toy = chosen
-        say(chosen == .ball ? "Flick the ball!" : "Tap anywhere to blow bubbles!")
+        say(chosen == .ball ? "Svep iväg bollen!" : "Tryck var som helst för bubblor!")
     }
 
     private func stopPlay() {
         if let playground {
             critterX = playground.critterX
             facingRight = playground.facingRight
-            if playground.fetches + playground.pops > 0 { say("That was so fun!") }
+            if playground.fetches + playground.pops > 0 { say("Det var jättekul!") }
         }
         withAnimation(.spring) {
             playground = nil
@@ -449,19 +449,19 @@ struct HomeView: View {
         case .caughtBall(let inAir):
             Haptics.thump()
             SoundFX.play(.squeak)
-            say(inAir ? "Mid-air catch!!" : "Got it!")
+            say(inAir ? "Fångad i luften!!" : "Tog den!")
             if inAir { addHearts(at: critterPoint, count: 2) }
         case .deliveredBall:
             Haptics.success()
             SoundFX.play(.giggle)
             let played = store.perform { state, now in state.pet?.play(at: now, fun: 10, energy: 3) ?? false }
             addHearts(at: critterPoint, count: 2)
-            floating.append(FloatingText(text: "+10 fun", point: CGPoint(x: critterPoint.x, y: critterPoint.y - 60)))
+            floating.append(FloatingText(text: "+10 kul", point: CGPoint(x: critterPoint.x, y: critterPoint.y - 60)))
             if playground.fetches.isMultiple(of: 3) {
                 store.perform { state, _ in state.earn(1) }
-                floating.append(FloatingText(text: "+1 coin", point: CGPoint(x: critterPoint.x + 90, y: critterPoint.y - 20)))
+                floating.append(FloatingText(text: "+1 mynt", point: CGPoint(x: critterPoint.x + 90, y: critterPoint.y - 20)))
             }
-            say(["Again! Again!", "Throw it again!", "I'm so fast!", "Here you go!"].randomElement()!)
+            say(["Igen! Igen!", "Kasta igen!", "Jag är supersnabb!", "Varsågod!"].randomElement()!)
             cleanUpLater()
             checkTired(played: played)
         case .poppedBubble(let point):
@@ -471,9 +471,9 @@ struct HomeView: View {
             let played = store.perform { state, now in state.pet?.play(at: now, fun: 4, energy: 1) ?? false }
             if playground.pops.isMultiple(of: 4) {
                 store.perform { state, _ in state.earn(1) }
-                floating.append(FloatingText(text: "+1 coin", point: CGPoint(x: point.x, y: point.y - 30)))
+                floating.append(FloatingText(text: "+1 mynt", point: CGPoint(x: point.x, y: point.y - 30)))
             }
-            if Int.random(in: 0..<3) == 0 { say(["Pop!", "Gotcha!", "Hee hee!", "More bubbles!"].randomElement()!) }
+            if Int.random(in: 0..<3) == 0 { say(["Poff!", "Tog dig!", "Hihi!", "Mer bubblor!"].randomElement()!) }
             cleanUpLater()
             checkTired(played: played)
         }
@@ -483,7 +483,7 @@ struct HomeView: View {
         guard let pet = store.pet else { return }
         if !played || pet.needs.energy < 10 {
             playground?.isTired = true
-            say("I'm all pooped out…")
+            say("Jag är helt slut…")
         }
     }
 
@@ -565,21 +565,21 @@ struct HomeView: View {
             Haptics.soft()
             SoundFX.play(.purr)
             addHearts(at: point, count: gain > Rules.strokeLove ? 3 : 1)
-            say(gain > Rules.strokeLove ? "I missed you!! +\(Int(gain)) love" : ["Purrrr…", "Mmm, nice…", "More please!", "So cozy…"].randomElement()! + " +\(Int(gain)) love")
+            say(gain > Rules.strokeLove ? "Jag har saknat dig!! +\(Int(gain)) kärlek" : ["Purrrr…", "Mmm, skönt…", "Mer, tack!", "Så mysigt…"].randomElement()! + " +\(Int(gain)) kärlek")
         case .nowFull:
             Haptics.success()
             addHearts(at: point, count: 4)
-            say("Okay, that's enough cuddles!")
+            say("Okej, nu räcker det med gos!")
             petting = false
             Task {
                 try? await Task.sleep(for: .seconds(1))
                 await walk(to: critterX < 640 ? 980 : 420)
             }
         case .ignored:
-            say(["Hmph. Later.", "Not now…", "I need some space!"].randomElement()!)
+            say(["Hmpf. Sen.", "Inte nu…", "Jag vill vara ifred!"].randomElement()!)
             facingRight.toggle()
         case .asleep:
-            say("Zzz… (\(pet.pronounName) is sleeping)")
+            say("Zzz… (\(pet.pronounName) sover)")
         case .dead:
             break
         }
@@ -602,19 +602,19 @@ struct HomeView: View {
             withAnimation(.spring(duration: 0.3, bounce: 0.5)) { hop = false }
         }
         if pet.isIgnoring(at: store.now) {
-            say("Hmph.")
+            say("Hmpf.")
         } else {
-            say(["Hi!", "Boop!", "Hee!", "What's up?", "Hello friend!"].randomElement()!)
+            say(["Hej!", "Bopp!", "Hihi!", "Läget?", "Hej kompis!"].randomElement()!)
         }
     }
 
     private func tickle() {
-        guard store.pet?.isIgnoring(at: store.now) == false else { return say("Not now!") }
+        guard store.pet?.isIgnoring(at: store.now) == false else { return say("Inte nu!") }
         wiggle = true
         SoundFX.play(.giggle)
         moodOverride = (.excited, Date().addingTimeInterval(1.4))
         store.perform { state, now in _ = state.pet?.play(at: now, fun: 3, energy: 0) }
-        say(["Hee hee hee! Stop it!", "That tickles!!", "Ha ha ha!"].randomElement()!)
+        say(["Hihihi! Sluta!", "Kittlas inte!!", "Ha ha ha!"].randomElement()!)
         Task {
             try? await Task.sleep(for: .seconds(1.2))
             wiggle = false
@@ -637,13 +637,13 @@ struct HomeView: View {
         if close {
             feed(id)
         } else {
-            say("Bring it here!")
+            say("Kom hit med den!")
         }
     }
 
     private func feed(_ itemID: String) {
         guard let pet = store.pet else { return }
-        guard !pet.isAsleep else { return say("Zzz… (too sleepy to eat)") }
+        guard !pet.isAsleep else { return say("Zzz… (för sömnig för att äta)") }
         let result = store.perform { state, now in state.feed(itemID, now: now) }
         Haptics.thump()
         SoundFX.play(.chomp)
@@ -658,8 +658,8 @@ struct HomeView: View {
         sparkles.append(FloatingText(text: "crumbs", point: CGPoint(x: critterX, y: lastLayout.petCenter.y + 20)))
         cleanUpLater()
         switch result {
-        case .yummy: say(["Nom nom nom!", "Yummy!", "Delicious!"].randomElement()!)
-        case .tooFull: say("Oof… I'm so full!")
+        case .yummy: say(["Mums mums!", "Smaskens!", "Jättegott!"].randomElement()!)
+        case .tooFull: say("Uff… jag är så mätt!")
         case .dead: break
         case .asleep, nil: say("Hmm?")
         }
@@ -669,7 +669,7 @@ struct HomeView: View {
         guard let pet = store.pet else { return }
         if pet.isAsleep { return say("Zzz…") }
         if store.state.count(of: "water") == 0 {
-            toaster.show("No water left. Buy some at the market!")
+            toaster.show("Vattnet är slut. Köp mer i affären!")
             return
         }
         Task {
@@ -688,9 +688,9 @@ struct HomeView: View {
         if pet.isAsleep {
             store.perform { state, now in state.pet?.wakeUp(at: now) }
             critterX = RoomLayout.bedX + 120
-            say(pet.needs.energy < 60 ? "Yawn… grumpy…" : "Good morning!")
+            say(pet.needs.energy < 60 ? "Gäsp… grinig…" : "God morgon!")
         } else if pet.needs.energy >= 95 {
-            say("I'm not sleepy!")
+            say("Jag är inte trött!")
         } else {
             Task {
                 busyUntil = Date().addingTimeInterval(8)
@@ -704,17 +704,17 @@ struct HomeView: View {
 
     private func goOut(_ screen: Screen) {
         guard let pet = store.pet else { return }
-        if pet.isAsleep { return toaster.show("Shh, \(pet.pronounName) is sleeping.") }
-        if screen == .park, pet.needs.energy < 15 { return toaster.show("\(pet.pronounName) is too tired for the park.") }
+        if pet.isAsleep { return toaster.show("Sch, \(pet.pronounName) sover.") }
+        if screen == .park, pet.needs.energy < 15 { return toaster.show("\(pet.pronounName) är för trött för parken.") }
         navigate(screen)
     }
 
     private func giveMedicine() {
         if store.state.count(of: "medicine") == 0 {
-            toaster.show("No medicine. Get a feel-good pill at the market!")
+            toaster.show("Ingen medicin. Köp ett må-bra-piller i affären!")
         } else if store.perform({ state, now in state.giveMedicine(now: now) }) {
             Haptics.success()
-            say("I feel better already!")
+            say("Jag mår redan bättre!")
         }
     }
 
@@ -724,7 +724,7 @@ struct HomeView: View {
             SoundFX.play(.coin)
             floating.append(FloatingText(text: "+\(coins)", point: point))
             sparkles.append(FloatingText(text: "", point: point))
-            if Bool.random() { say(["Thank you!", "Much better!", "Oops, sorry!"].randomElement()!) }
+            if Bool.random() { say(["Tack!", "Mycket bättre!", "Hoppsan, förlåt!"].randomElement()!) }
             cleanUpLater()
         }
     }
@@ -769,12 +769,12 @@ private struct PlayScore: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(toy == .ball ? "Fetch!" : "Bubble pop!").font(.cute(20, .bold))
+            Text(toy == .ball ? "Apport!" : "Bubbelpop!").font(.cute(20, .bold))
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(toy == .ball ? fetches : pops)").font(.cute(40, .bold)).contentTransition(.numericText())
-                Text(toy == .ball ? "fetches" : "pops").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
+                Text(toy == .ball ? "hämtningar" : "bubblor").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
             }
-            Text(toy == .ball ? "Drag the ball and let go to throw it!" : "Tap the room to blow bubbles!")
+            Text(toy == .ball ? "Dra i bollen och släpp för att kasta!" : "Tryck i rummet för att blåsa bubblor!")
                 .font(.cute(15, .medium))
                 .foregroundStyle(Color.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -860,13 +860,13 @@ struct NeedsPanel: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            NeedBar(title: "Hunger", systemName: "fork.knife", value: pet.needs.hunger, tint: Color(hex: 0xFF9F68), iconFill: .peachLight)
-            NeedBar(title: "Thirst", systemName: "drop.fill", value: pet.needs.thirst, tint: .skyDeep, iconFill: .skyLight)
-            NeedBar(title: "Energy", systemName: "moon.fill", value: pet.needs.energy, tint: .lavenderDeep, iconFill: Color(hex: 0xECE4FF))
-            NeedBar(title: "Clean", systemName: "bubbles.and.sparkles.fill", value: pet.needs.hygiene, tint: .mintDeep, iconFill: .mintLight)
-            NeedBar(title: "Fun", systemName: "tennisball.fill", value: pet.needs.fun, tint: .butterDeep, iconFill: .butterLight)
-            NeedBar(title: "Love", systemName: "heart.fill", value: pet.needs.love, tint: .coral, iconFill: .pinkLight)
-            NeedBar(title: pet.poops.isEmpty ? "Room" : "Room · \(pet.poops.count) poop\(pet.poops.count == 1 ? "" : "s")", systemName: "house.fill", value: pet.roomCleanliness, tint: .poopLight, iconFill: Color(hex: 0xEFE6DC))
+            NeedBar(title: "Mat", systemName: "fork.knife", value: pet.needs.hunger, tint: Color(hex: 0xFF9F68), iconFill: .peachLight)
+            NeedBar(title: "Vatten", systemName: "drop.fill", value: pet.needs.thirst, tint: .skyDeep, iconFill: .skyLight)
+            NeedBar(title: "Energi", systemName: "moon.fill", value: pet.needs.energy, tint: .lavenderDeep, iconFill: Color(hex: 0xECE4FF))
+            NeedBar(title: "Renhet", systemName: "bubbles.and.sparkles.fill", value: pet.needs.hygiene, tint: .mintDeep, iconFill: .mintLight)
+            NeedBar(title: "Kul", systemName: "tennisball.fill", value: pet.needs.fun, tint: .butterDeep, iconFill: .butterLight)
+            NeedBar(title: "Kärlek", systemName: "heart.fill", value: pet.needs.love, tint: .coral, iconFill: .pinkLight)
+            NeedBar(title: pet.poops.isEmpty ? "Rummet" : "Rummet · \(pet.poops.count) bajskorv\(pet.poops.count == 1 ? "" : "ar")", systemName: "house.fill", value: pet.roomCleanliness, tint: .poopLight, iconFill: Color(hex: 0xEFE6DC))
         }
         .padding(18)
         .card(fill: .white.opacity(0.95))
@@ -903,14 +903,14 @@ private struct FridgeTray: View {
         let foods = Catalog.items.filter { $0.foodEffect != nil && store.state.count(of: $0.id) > 0 }
         VStack(spacing: 6) {
             if !foods.isEmpty {
-                Text("Drag food to your critter's mouth, or tap it")
+                Text("Dra maten till krypets mun, eller tryck på den")
                     .font(.cute(15, .medium))
                     .foregroundStyle(Color.inkSoft)
             }
             HStack(spacing: 12) {
                 if foods.isEmpty {
-                    Text("The fridge is empty!").font(.cute(20))
-                    Button("Go shopping", action: onShop)
+                    Text("Kylskåpet är tomt!").font(.cute(20))
+                    Button("Gå och handla", action: onShop)
                         .buttonStyle(ChunkyButtonStyle())
                 } else {
                     ForEach(foods) { item in
@@ -933,7 +933,7 @@ private struct FridgeTray: View {
                         )
                         .accessibilityElement()
                         .accessibilityIdentifier("food-\(item.id)")
-                        .accessibilityLabel("Feed \(item.name)")
+                        .accessibilityLabel("Mata med \(item.name.lowercased())")
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction { onFeed(item.id) }
                     }

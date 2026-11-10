@@ -70,7 +70,7 @@ final class BathUITests: XCTestCase {
         rub(from: CGPoint(x: 1080, y: 300), passes: 4)
         Thread.sleep(forTimeInterval: 0.3)
         snap("7-shake")
-        XCTAssertTrue(app.buttons["All clean! Back home"].waitForExistence(timeout: 4), "The bath should be finished")
+        XCTAssertTrue(app.buttons["Skinande ren! Gå hem"].waitForExistence(timeout: 4), "The bath should be finished")
         Thread.sleep(forTimeInterval: 1.5)
         snap("8-sparkly")
     }
