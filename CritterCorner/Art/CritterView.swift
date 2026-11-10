@@ -1,6 +1,30 @@
 import CritterKit
 import SwiftUI
 
+/// What's on the critter's coat: mud, bath foam, water drops, and a sickly tint.
+/// Everything is painted onto the body itself, clipped to its outline, so it moves and squashes with it.
+struct CritterCoat: Equatable {
+    var mud: [BathSession.Mark] = []
+    var foam: [BathSession.Mark] = []
+    var drops: [BathSession.Mark] = []
+    var shampoo = false
+    var sickly = false
+
+    /// The everyday look: mud builds up as hygiene drops, in the same spots the bath will find.
+    static func everyday(for pet: Pet) -> CritterCoat {
+        var coat = CritterCoat(sickly: pet.isSick)
+        let grime = pet.grime
+        if grime > 0 {
+            coat.mud = BathSession(seed: pet.genome.seed, dirtiness: 1 - pet.needs.hygiene / 100).dirt.map { spot in
+                var faded = spot
+                faded.amount = spot.amount * min(1, 0.35 + grime)
+                return faded
+            }
+        }
+        return coat
+    }
+}
+
 /// Draws a critter from its genome in a 200×200 design space, mirroring the mockup SVGs.
 struct CritterView: View {
     let genome: Genome
@@ -14,11 +38,12 @@ struct CritterView: View {
     var blissful = false
     /// 0...1 glossy coat after a bath.
     var shine: Double = 0
+    var coat = CritterCoat()
 
     var body: some View {
         Canvas { context, size in
             context.scaleBy(x: size.width / 200, y: size.height / 200)
-            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, shine: shine, context: context).paint()
+            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, shine: shine, coat: coat, context: context).paint()
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
@@ -41,12 +66,16 @@ struct LiveCritterView: View {
     var blissful = false
     /// 0...1 after a bath: a glossy coat and twinkling sparkles.
     var shine: Double = 0
+    var condition: Condition = .normal
+    var coat = CritterCoat()
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let phase = Double(genome.seed % 1000) / 160
-            let breath = 1 + 0.025 * sin(t * 2.2 + phase)
+            let dying = condition == .dying
+            let breath = 1 + (dying ? 0.012 * sin(t * 1.1 + phase) : 0.025 * sin(t * 2.2 + phase))
+            let shiver = condition == .sick ? sin(t * 31) * 1.2 : 0
             let blinkCycle = (t + phase).truncatingRemainder(dividingBy: 4.2)
             let bounce: Double = switch expression {
             case .excited: -abs(sin(t * 6)) * 18
@@ -58,14 +87,61 @@ struct LiveCritterView: View {
             let giggle = wiggle ? sin(t * 40) * 7 : 0
             let sway: Double = (expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5) + waddle + giggle + lean
             let eyes = CGVector(dx: facingRight ? look.dx : -look.dx, dy: look.dy)
-            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14, halo: halo, look: eyes, blissful: blissful, shine: shine)
-                .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath, anchor: .bottom)
-                .rotationEffect(.degrees(sway), anchor: .bottom)
+            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14 || (dying && blinkCycle < 1.4), halo: halo, look: eyes, blissful: blissful, shine: shine, coat: coat)
+                .saturation(dying ? 0.3 : (condition == .sick ? 0.75 : 1))
+                .opacity(dying ? 0.9 : 1)
+                .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath * (dying ? 0.95 : 1), anchor: .bottom)
+                .rotationEffect(.degrees(sway + (dying ? 4 : 0)), anchor: .bottom)
+                .offset(x: shiver)
                 .overlay {
                     if shine > 0.02 { Twinkles(time: t, amount: shine, girth: weight) }
+                    if condition == .filthy { Flies(time: t) }
+                    if condition == .filthy || condition == .dirty { Stink(time: t, strong: condition == .filthy) }
                 }
                 .offset(y: bounce + step)
         }
+    }
+}
+
+/// Little flies buzzing around a filthy critter.
+private struct Flies: View {
+    let time: TimeInterval
+
+    var body: some View {
+        Canvas { c, size in
+            for i in 0..<3 {
+                let speed = 2.4 + Double(i) * 0.7
+                let angle = time * speed + Double(i) * 2.1
+                let x = size.width * (0.5 + cos(angle) * (0.32 + 0.06 * Double(i)))
+                let y = size.height * (0.32 + sin(angle * 1.7) * 0.12 + Double(i) * 0.05)
+                let flap = abs(sin(time * 40 + Double(i)))
+                c.oval(x - 4, y - 5, 5, 3 + 2 * flap, .white.opacity(0.8))
+                c.oval(x + 4, y - 5, 5, 3 + 2 * flap, .white.opacity(0.8))
+                c.dot(x, y, 4, .ink)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// Wavy smell lines rising off a dirty critter.
+private struct Stink: View {
+    let time: TimeInterval
+    let strong: Bool
+
+    var body: some View {
+        Canvas { c, size in
+            for i in 0..<(strong ? 3 : 2) {
+                let x = size.width * (0.3 + 0.2 * Double(i))
+                let phase = (time * 0.6 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
+                let y = size.height * (0.3 - 0.18 * phase)
+                c.line(Color(hex: 0x9AB87A).opacity((strong ? 0.8 : 0.5) * sin(phase * .pi)), width: 4) { p in
+                    p.move(to: CGPoint(x: x, y: y + 30))
+                    p.addCurve(to: CGPoint(x: x, y: y - 20), control1: CGPoint(x: x + 14, y: y + 14), control2: CGPoint(x: x - 14, y: y - 4))
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -102,6 +178,7 @@ private struct CritterPainter {
     let halo: Bool
     let look: CGVector
     let shine: Double
+    let coat: CritterCoat
     var context: GraphicsContext
 
     private var body: Color { Color(hex: genome.palette.body) }
@@ -122,6 +199,7 @@ private struct CritterPainter {
         eyes()
         cheeks()
         mouth()
+        if coat.sickly { sickExtras() }
         if halo {
             var ring = Path(ellipseIn: CGRect(x: 66, y: 12, width: 68, height: 18))
             ring = ring.strokedPath(StrokeStyle(lineWidth: 6))
@@ -242,12 +320,15 @@ private struct CritterPainter {
         ctx.translateBy(x: 100, y: 0)
         ctx.scaleBy(x: girth, y: 1)
         ctx.translateBy(x: -100, y: 0)
+        let outline: Path
         switch genome.body {
         case .round:
-            ctx.fill(Path(ellipseIn: CGRect(x: 34, y: 60, width: 132, height: 120)), with: .color(body))
+            outline = Path(ellipseIn: CGRect(x: 34, y: 60, width: 132, height: 120))
+            ctx.fill(outline, with: .color(body))
             ctx.fill(Path(ellipseIn: CGRect(x: 60, y: 112, width: 80, height: 60)), with: .color(belly))
         case .bean:
-            ctx.fill(Path(roundedRect: CGRect(x: 42, y: 54, width: 116, height: 128), cornerRadius: 58), with: .color(body))
+            outline = Path(roundedRect: CGRect(x: 42, y: 54, width: 116, height: 128), cornerRadius: 58)
+            ctx.fill(outline, with: .color(body))
             ctx.fill(Path(ellipseIn: CGRect(x: 64, y: 122, width: 72, height: 52)), with: .color(belly))
         case .blob:
             var path = Path()
@@ -256,9 +337,11 @@ private struct CritterPainter {
             path.addCurve(to: CGPoint(x: 160, y: 150), control1: CGPoint(x: 140, y: 52), control2: CGPoint(x: 170, y: 92))
             path.addCurve(to: CGPoint(x: 100, y: 182), control1: CGPoint(x: 158, y: 172), control2: CGPoint(x: 140, y: 182))
             path.addCurve(to: CGPoint(x: 40, y: 150), control1: CGPoint(x: 60, y: 182), control2: CGPoint(x: 42, y: 172))
+            outline = path
             ctx.fill(path, with: .color(body))
             ctx.fill(Path(ellipseIn: CGRect(x: 62, y: 128, width: 76, height: 44)), with: .color(belly))
         }
+        defer { paintCoat(in: ctx, clippedTo: outline) }
         if shine > 0 {
             let gloss = Color.white.opacity(0.65 * shine)
             let top: CGFloat = genome.body == .round ? 66 : 58
@@ -286,6 +369,58 @@ private struct CritterPainter {
             chevron.addLines([CGPoint(x: 90, y: 72), CGPoint(x: 100, y: 82), CGPoint(x: 110, y: 72)])
             ctx.stroke(chevron, with: .color(shade), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
         }
+    }
+
+    /// Mud, foam and drops painted onto the fur, clipped to the body so they move with it.
+    private func paintCoat(in base: GraphicsContext, clippedTo outline: Path) {
+        var c = base
+        c.clip(to: outline)
+        if coat.sickly {
+            c.fill(Path(CGRect(x: 0, y: 0, width: 200, height: 200)), with: .color(Color(hex: 0x9AD39A).opacity(0.3)))
+        }
+        for spot in coat.mud {
+            let x = spot.x * 200, y = spot.y * 200, r = spot.size * 200
+            let mud = Color(hex: 0x8A5A3C)
+            c.oval(x, y, r, r * 0.8, mud.opacity(0.8 * spot.amount), rotation: Double(spot.id * 37 % 90))
+            c.dot(x + r * 0.75, y - r * 0.45, r * 0.38, mud.opacity(0.7 * spot.amount))
+            c.dot(x - r * 0.8, y + r * 0.35, r * 0.3, mud.opacity(0.6 * spot.amount))
+            c.dot(x - r * 0.2, y + r * 0.95, r * 0.22, mud.opacity(0.55 * spot.amount))
+            c.dot(x - r * 0.25, y - r * 0.25, r * 0.22, Color(hex: 0xA8754F).opacity(0.7 * spot.amount))
+        }
+        let foamTint: Color = coat.shampoo ? Color(hex: 0xF1E6FF) : .white
+        for blob in coat.foam {
+            let x = blob.x * 200, y = blob.y * 200, r = blob.size * 200
+            let alpha = min(1, blob.amount)
+            c.dot(x, y, r, foamTint.opacity(alpha))
+            c.dot(x - r * 0.8, y + r * 0.3, r * 0.7, foamTint.opacity(alpha))
+            c.dot(x + r * 0.8, y + r * 0.2, r * 0.75, foamTint.opacity(alpha))
+            c.dot(x - r * 0.2, y - r * 0.4, r * 0.25, Color.sky.opacity(0.5 * alpha))
+        }
+        for drop in coat.drops {
+            let x = drop.x * 200, y = drop.y * 200
+            c.shape(Color.skyDeep.opacity(0.85 * drop.amount)) { p in
+                p.move(to: CGPoint(x: x, y: y - 6))
+                p.addCurve(to: CGPoint(x: x, y: y + 4), control1: CGPoint(x: x + 5, y: y - 1), control2: CGPoint(x: x + 4, y: y + 4))
+                p.addCurve(to: CGPoint(x: x, y: y - 6), control1: CGPoint(x: x - 4, y: y + 4), control2: CGPoint(x: x - 5, y: y - 1))
+            }
+            c.dot(x - 1.5, y - 0.5, 1.1, .white.opacity(drop.amount))
+        }
+    }
+
+    private func sickExtras() {
+        // A thermometer poking out of the mouth and a cold sweat drop.
+        let thermometer = Path(roundedRect: CGRect(x: -3, y: -2, width: 34, height: 6), cornerRadius: 3)
+            .applying(CGAffineTransform(translationX: 104, y: 132).rotated(by: 0.45))
+        context.fill(thermometer, with: .color(.white))
+        context.stroke(thermometer, with: .color(.ink.opacity(0.4)), lineWidth: 1)
+        let bulb = Path(ellipseIn: CGRect(x: 30, y: -2.5, width: 7, height: 7))
+            .applying(CGAffineTransform(translationX: 104, y: 132).rotated(by: 0.45))
+        context.fill(bulb, with: .color(.coralDeep))
+        var sweat = Path()
+        sweat.move(to: CGPoint(x: 146, y: 74))
+        sweat.addCurve(to: CGPoint(x: 146, y: 92), control1: CGPoint(x: 156, y: 84), control2: CGPoint(x: 154, y: 92))
+        sweat.addCurve(to: CGPoint(x: 146, y: 74), control1: CGPoint(x: 138, y: 92), control2: CGPoint(x: 136, y: 84))
+        context.fill(sweat, with: .color(.sky))
     }
 
     private var eyesClosed: Bool {

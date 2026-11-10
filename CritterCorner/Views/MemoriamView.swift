@@ -177,7 +177,7 @@ struct AboutPetView: View {
                 Button("Done") { dismiss() }.buttonStyle(ChunkyButtonStyle(fill: .butter, shadow: .butterDeep))
             }
             HStack(alignment: .top, spacing: 24) {
-                LiveCritterView(genome: pet.genome, expression: pet.expression(at: now), weight: pet.weight, shine: pet.shine(at: now))
+                LiveCritterView(genome: pet.genome, expression: pet.expression(at: now), weight: pet.weight, shine: pet.shine(at: now), condition: pet.condition(at: now), coat: .everyday(for: pet))
                     .frame(width: 220, height: 220)
                     .background(RoundedRectangle(cornerRadius: 28).fill(Color(hex: pet.genome.palette.stage)))
                 VStack(alignment: .leading, spacing: 10) {

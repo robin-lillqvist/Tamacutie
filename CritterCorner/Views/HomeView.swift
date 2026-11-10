@@ -188,7 +188,9 @@ struct HomeView: View {
             lean: lean,
             wiggle: wiggle,
             blissful: (petting && pet.expression(at: store.now) != .ignoring) || chomping || wiggle,
-            shine: pet.shine(at: store.now)
+            shine: pet.shine(at: store.now),
+            condition: pet.condition(at: store.now),
+            coat: .everyday(for: pet)
         )
         .frame(width: 300, height: 300)
         .scaleEffect(pet.isAsleep ? 0.75 : 1, anchor: .bottom)

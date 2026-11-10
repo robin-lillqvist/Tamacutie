@@ -21,6 +21,8 @@
 - [x] App icon
 - [ ] Build, test, install silently on both iPads
 
+- [x] Shiny sparkle after bath; believable bath (taps, pipes, shower rail, sponge, towel, drain); dirt on the coat; condition looks (sparkly, dirty, filthy, sick, dying)
+
 ## Review
 - Logic: 44 CritterKit tests (`cd CritterKit && swift test`) cover decay, sleep, digestion, sickness, weight, death by neglect and by overeating, social behaviour, economy, decor, memorial and save/load.
 - App: 13 tests (`xcodebuild test`) cover the store's real-time persistence and render every screen at iPad size (set TEST_RUNNER_SNAPSHOT_DIR to save PNGs).

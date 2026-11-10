@@ -67,6 +67,11 @@ public enum WeightStage: String, Codable, CaseIterable, Sendable {
     public var isDangerous: Bool { self == .starving || self == .obese }
 }
 
+/// How the critter looks overall, from freshly bathed to fading away.
+public enum Condition: String, Sendable {
+    case sparkly, clean, normal, dirty, filthy, sick, dying, dead
+}
+
 public enum Mood: String, Sendable {
     case dead, asleep, sick, ignoring, excited, happy, content, hungry, sleepy, sad
 }
@@ -114,6 +119,22 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
 
     /// 0...100, how much dirt is in the room.
     public var roomCleanliness: Double { max(0, 100 - Double(poops.count) * 18) }
+
+    /// 0...1: how much mud is caked on the coat. None until hygiene drops below 60.
+    public var grime: Double {
+        min(1, max(0, (60 - needs.hygiene) / 50))
+    }
+
+    public func condition(at now: Date) -> Condition {
+        if !isAlive { return .dead }
+        if weightStage.isDangerous { return .dying }
+        if isSick { return .sick }
+        if shine(at: now) > 0.05 { return .sparkly }
+        if needs.hygiene < 20 { return .filthy }
+        if needs.hygiene < 50 { return .dirty }
+        if needs.hygiene >= 85 { return .clean }
+        return .normal
+    }
 
     /// 0...1: how shiny and sparkly the critter is after a bath. Fades with time and dirt.
     public func shine(at now: Date) -> Double {
