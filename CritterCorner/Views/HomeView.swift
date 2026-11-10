@@ -62,7 +62,7 @@ struct HomeView: View {
     private func room(pet: Pet, layout: RoomLayout) -> some View {
         let size = layout.size
         return ZStack(alignment: .topLeading) {
-            RoomBackdrop(size: size, waterLevel: pet.needs.thirst / 100, foodInBowl: pet.needs.hunger > 50)
+            RoomBackdrop(size: size, waterLevel: pet.needs.thirst / 100, foodInBowl: pet.needs.hunger > 50, isNight: store.now.isNight)
 
             // Touching the empty room makes the critter look at your finger, and blows bubbles in bubble mode.
             Color.clear
@@ -101,6 +101,12 @@ struct HomeView: View {
                 }
             }
 
+            if store.now.isNight && !pet.isAsleep {
+                Color.ink.opacity(0.12)
+                    .frame(width: size.width, height: size.height)
+                    .allowsHitTesting(false)
+            }
+
             critter(pet: pet, layout: layout)
 
             if let playground, toy == .ball || playground.ballState != .resting {
@@ -118,6 +124,8 @@ struct HomeView: View {
                 Color.ink.opacity(0.42)
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
+            }
+            if pet.isAsleep {
                 ZzzView()
                     .position(x: RoomLayout.bedX + 120, y: layout.floorTop - 170)
             }
@@ -345,12 +353,27 @@ struct HomeView: View {
                 say("Yaaawn…")
             } else if pet.needs.fun < 30, Bool.random() {
                 say(["Play with me!", "I'm bored…", "Ball? Ball!"].randomElement()!)
+            } else if Int.random(in: 0..<3) == 0 {
+                await lookAround()
             } else {
                 await walk(to: CGFloat.random(in: 420...860))
                 if Int.random(in: 0..<4) == 0 {
                     say(["La la la~", "Hmm hmm~", "*sniff sniff*", "What a nice day!", "♪ ♫"].randomElement()!)
                 }
             }
+        }
+    }
+
+    private func lookAround() async {
+        for _ in 0..<2 {
+            lookPoint = CGPoint(x: critterX + CGFloat.random(in: -400...400), y: CGFloat.random(in: 150...600))
+            try? await Task.sleep(for: .seconds(1.1))
+        }
+        lookPoint = nil
+        if Bool.random() {
+            withAnimation(.spring(duration: 0.22)) { hop = true }
+            try? await Task.sleep(for: .milliseconds(220))
+            withAnimation(.spring(duration: 0.3, bounce: 0.5)) { hop = false }
         }
     }
 
@@ -419,12 +442,15 @@ struct HomeView: View {
         switch event {
         case .bounced:
             Haptics.soft()
+            SoundFX.play(.bounce)
         case .caughtBall(let inAir):
             Haptics.thump()
+            SoundFX.play(.squeak)
             say(inAir ? "Mid-air catch!!" : "Got it!")
             if inAir { addHearts(at: critterPoint, count: 2) }
         case .deliveredBall:
             Haptics.success()
+            SoundFX.play(.giggle)
             let played = store.perform { state, now in state.pet?.play(at: now, fun: 10, energy: 3) ?? false }
             addHearts(at: critterPoint, count: 2)
             floating.append(FloatingText(text: "+10 fun", point: CGPoint(x: critterPoint.x, y: critterPoint.y - 60)))
@@ -437,6 +463,7 @@ struct HomeView: View {
             checkTired(played: played)
         case .poppedBubble(let point):
             Haptics.tap()
+            SoundFX.play(.pop)
             sparkles.append(FloatingText(text: "", point: CGPoint(x: point.x, y: point.y)))
             let played = store.perform { state, now in state.pet?.play(at: now, fun: 4, energy: 1) ?? false }
             if playground.pops.isMultiple(of: 4) {
@@ -487,6 +514,7 @@ struct HomeView: View {
                 if toy == .bubbles, hypot(value.translation.width, value.translation.height) < 12 {
                     playground?.blowBubble(at: Point2(value.location.x, min(value.location.y, layout.petCenter.y)))
                     Haptics.soft()
+                    SoundFX.play(.boop)
                 }
                 Task {
                     try? await Task.sleep(for: .seconds(1.2))
@@ -532,6 +560,7 @@ struct HomeView: View {
         switch result {
         case .loved(let gain):
             Haptics.soft()
+            SoundFX.play(.purr)
             addHearts(at: point, count: gain > Rules.strokeLove ? 3 : 1)
             say(gain > Rules.strokeLove ? "I missed you!! +\(Int(gain)) love" : ["Purrrr…", "Mmm, nice…", "More please!", "So cozy…"].randomElement()! + " +\(Int(gain)) love")
         case .nowFull:
@@ -563,6 +592,7 @@ struct HomeView: View {
             tickle()
             return
         }
+        SoundFX.play(.boop)
         withAnimation(.spring(duration: 0.22)) { hop = true }
         Task {
             try? await Task.sleep(for: .milliseconds(220))
@@ -578,6 +608,7 @@ struct HomeView: View {
     private func tickle() {
         guard store.pet?.isIgnoring(at: store.now) == false else { return say("Not now!") }
         wiggle = true
+        SoundFX.play(.giggle)
         moodOverride = (.excited, Date().addingTimeInterval(1.4))
         store.perform { state, now in _ = state.pet?.play(at: now, fun: 3, energy: 0) }
         say(["Hee hee hee! Stop it!", "That tickles!!", "Ha ha ha!"].randomElement()!)
@@ -612,6 +643,7 @@ struct HomeView: View {
         guard !pet.isAsleep else { return say("Zzz… (too sleepy to eat)") }
         let result = store.perform { state, now in state.feed(itemID, now: now) }
         Haptics.thump()
+        SoundFX.play(.chomp)
         chomping = true
         withAnimation(.spring(duration: 0.15)) { hop = true }
         Task {
@@ -642,6 +674,7 @@ struct HomeView: View {
             await walk(to: 980)
             if store.perform({ state, now in state.refillWater(now: now) }) {
                 Haptics.success()
+                SoundFX.play(.splash)
                 say("Slurp slurp! Ahh.")
             }
         }
@@ -685,6 +718,7 @@ struct HomeView: View {
     private func scoop(_ poop: Poop, at point: CGPoint) {
         if let coins = store.perform({ state, _ in state.scoop(poop.id) }) {
             Haptics.tap()
+            SoundFX.play(.coin)
             floating.append(FloatingText(text: "+\(coins)", point: point))
             sparkles.append(FloatingText(text: "", point: point))
             if Bool.random() { say(["Thank you!", "Much better!", "Oops, sorry!"].randomElement()!) }

@@ -96,6 +96,7 @@ struct MarketView: View {
                 .font(.cute(13, .medium)).foregroundStyle(Color.inkSoft)
             Button {
                 basket[item.id, default: 0] += 1
+                SoundFX.play(.boop)
                 cashierLine = ["Ooh, good choice!", "Yummy pick!", "Anything else?", "Your critter will love that!"].randomElement()!
             } label: {
                 HStack(spacing: 4) {
@@ -192,6 +193,8 @@ struct MarketView: View {
             for (id, quantity) in order { _ = state.buy(id, quantity: quantity) }
         }
         basket = [:]
+        SoundFX.play(.coin)
+        Haptics.success()
         cashierLine = "Thank you! Come again!"
         toaster.show("Bought! Find it in your fridge and cupboard.")
     }

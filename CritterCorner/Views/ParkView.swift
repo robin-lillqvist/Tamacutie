@@ -196,6 +196,7 @@ struct ParkView: View {
         coinsFound += reward
         floating.append(FloatingText(text: "+\(reward)", point: point))
         Haptics.success()
+        SoundFX.play(.squeak)
         run(to: point.x - 40, duration: 0.3)
         withAnimation(.spring(duration: 0.3)) { petHop = true }
         Task {
@@ -222,6 +223,7 @@ struct ParkView: View {
         mounds[index].reward = reward
         coinsFound += reward
         Haptics.tap()
+        SoundFX.play(reward > 0 ? .coin : .boop)
         run(to: mound.point.x, duration: 0.6)
         say(reward == 0 ? "Just a flower. Pretty!" : (reward >= 5 ? "Treasure!!" : "Ooh, coins!"))
     }

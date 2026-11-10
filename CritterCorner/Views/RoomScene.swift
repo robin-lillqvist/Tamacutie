@@ -27,6 +27,7 @@ struct RoomBackdrop: View {
     let size: CGSize
     var waterLevel: Double = 1
     var foodInBowl = true
+    var isNight = false
 
     var body: some View {
         Canvas { c, _ in
@@ -56,15 +57,23 @@ struct RoomBackdrop: View {
             }
 
             // Window with a little sky.
-            c.box(770, 104, 230, 180, radius: 28, Color(hex: 0xBFE6FF))
+            c.box(770, 104, 230, 180, radius: 28, isNight ? Color(hex: 0x2F3A6B) : Color(hex: 0xBFE6FF))
             c.outline(Path(roundedRect: CGRect(x: 770, y: 104, width: 230, height: 180), cornerRadius: 28), .white, width: 14)
             c.line(.white, width: 10) { p in
                 p.move(to: CGPoint(x: 885, y: 104)); p.addLine(to: CGPoint(x: 885, y: 284))
                 p.move(to: CGPoint(x: 770, y: 194)); p.addLine(to: CGPoint(x: 1000, y: 194))
             }
-            c.dot(950, 146, 22, .butter)
-            c.oval(820, 240, 34, 14, .white)
-            c.oval(840, 230, 22, 16, .white)
+            if isNight {
+                c.dot(950, 146, 22, .butterLight)
+                c.dot(960, 140, 19, Color(hex: 0x2F3A6B))
+                for (x, y, r) in [(810.0, 140.0, 5.0), (850, 240, 4), (930, 230, 5), (980, 250, 3), (830, 175, 3)] {
+                    c.sparkle(x, y, r * 1.6, .butter)
+                }
+            } else {
+                c.dot(950, 146, 22, .butter)
+                c.oval(820, 240, 34, 14, .white)
+                c.oval(840, 230, 22, 16, .white)
+            }
             c.shape(.pink) { p in
                 p.move(to: CGPoint(x: 760, y: 90))
                 p.addQuadCurve(to: CGPoint(x: 1010, y: 90), control: CGPoint(x: 885, y: 130))
@@ -147,5 +156,13 @@ struct PlacedDecorView: View {
         DecorArt(id: decor.itemID, flipped: decor.flipped)
             .frame(width: size.width, height: size.height)
             .position(layout.point(for: decor))
+    }
+}
+
+extension Date {
+    /// Night in the room follows the real clock: 20:00 to 07:00.
+    var isNight: Bool {
+        let hour = Calendar.current.component(.hour, from: self)
+        return hour >= 20 || hour < 7
     }
 }

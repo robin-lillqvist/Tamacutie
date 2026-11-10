@@ -209,6 +209,7 @@ struct BathView: View {
                     switch step {
                     case .scrub:
                         if Int.random(in: 0..<3) == 0 {
+                            if Int.random(in: 0..<4) == 0 { SoundFX.play(.pop) }
                             bubbles.append(Bubble(point: point, size: .random(in: 18...54), tint: [.lavender, .sky, .pink, .mint].randomElement()!))
                         }
                     case .rinse:
@@ -229,6 +230,7 @@ struct BathView: View {
     }
 
     private func fillTub() {
+        SoundFX.play(.splash)
         withAnimation(.easeInOut(duration: 1.2)) { water = 1 }
         say("Ooh, warm water!")
         step = .scrub
@@ -261,6 +263,8 @@ struct BathView: View {
             tool = nil
             withAnimation(.easeInOut(duration: 1)) { water = 0 }
             let coins = store.perform { state, now in state.finishBath(useShampoo: useShampoo, now: now) }
+            SoundFX.play(.coin)
+            Haptics.success()
             say(useShampoo ? "I'm so sparkly! ✨" : "Squeaky clean!")
             toaster.show("Bath done: +\(coins) coins!")
         default:
