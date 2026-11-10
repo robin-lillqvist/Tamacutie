@@ -36,6 +36,9 @@ public enum Rules {
     public static let dirtyHygieneBelow = 10.0
     public static let hoursDirtyUntilSick = 6.0
 
+    public static let shineDuration: TimeInterval = 3 * 3600
+    public static let shampooShineDuration: TimeInterval = 8 * 3600
+
     public static let simulationStep: TimeInterval = 60
 
     public static let startingCoins = 100

@@ -89,6 +89,9 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
     public private(set) var missedYouUntil: Date?
     public private(set) var deathDate: Date?
     public private(set) var causeOfDeath: CauseOfDeath?
+    /// When the post-bath shine started and when it wears off.
+    public private(set) var shineStart: Date?
+    public private(set) var shineEnd: Date?
 
     public init(name: String, genome: Genome, now: Date) {
         id = UUID()
@@ -111,6 +114,14 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
 
     /// 0...100, how much dirt is in the room.
     public var roomCleanliness: Double { max(0, 100 - Double(poops.count) * 18) }
+
+    /// 0...1: how shiny and sparkly the critter is after a bath. Fades with time and dirt.
+    public func shine(at now: Date) -> Double {
+        guard isAlive, let shineStart, let shineEnd, now < shineEnd, now >= shineStart else { return 0 }
+        let timeLeft = shineEnd.timeIntervalSince(now) / shineEnd.timeIntervalSince(shineStart)
+        let clean = min(1, max(0, (needs.hygiene - 50) / 40))
+        return min(timeLeft, clean)
+    }
 
     public func isIgnoring(at now: Date) -> Bool {
         guard let cooldownUntil else { return false }
@@ -330,8 +341,10 @@ extension Pet {
         return true
     }
 
-    public mutating func bathe(at now: Date) {
+    public mutating func bathe(at now: Date, shampoo: Bool = false) {
         guard isAlive else { return }
+        shineStart = now
+        shineEnd = now.addingTimeInterval(shampoo ? Rules.shampooShineDuration : Rules.shineDuration)
         needs.hygiene = 100
         needs.fun = (needs.fun + (genome.has(.lovesBaths) ? 10 : -5)).clamped()
         dirtyHours = 0

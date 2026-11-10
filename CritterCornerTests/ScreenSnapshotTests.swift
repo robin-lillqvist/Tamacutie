@@ -49,5 +49,12 @@ final class ScreenSnapshotTests: XCTestCase {
         XCTAssertFalse(pet.isAlive)
         try render("farewell", FarewellView(pet: pet))
     }
+    func testShinyAfterBath() throws {
+        store.perform { state, now in _ = state.finishBath(useShampoo: false, now: now) }
+        XCTAssertEqual(store.pet?.shine(at: store.now) ?? 0, 1, accuracy: 0.01)
+        try render("home-shiny", HomeView())
+        try render("bath-shiny-zoom", LiveCritterView(genome: store.pet!.genome, expression: .happy, shine: 1).padding(40).background(Color.mintLight), size: CGSize(width: 400, height: 400))
+    }
+
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
 }

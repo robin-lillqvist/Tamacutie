@@ -12,11 +12,13 @@ struct CritterView: View {
     var look: CGVector = .zero
     /// Eyes squeezed shut with joy, e.g. while being petted.
     var blissful = false
+    /// 0...1 glossy coat after a bath.
+    var shine: Double = 0
 
     var body: some View {
         Canvas { context, size in
             context.scaleBy(x: size.width / 200, y: size.height / 200)
-            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, context: context).paint()
+            CritterPainter(genome: genome, expression: expression, weight: weight, blinking: blinking || blissful, halo: halo, look: look, shine: shine, context: context).paint()
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement()
@@ -37,6 +39,8 @@ struct LiveCritterView: View {
     var lean: Double = 0
     var wiggle = false
     var blissful = false
+    /// 0...1 after a bath: a glossy coat and twinkling sparkles.
+    var shine: Double = 0
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -54,11 +58,39 @@ struct LiveCritterView: View {
             let giggle = wiggle ? sin(t * 40) * 7 : 0
             let sway: Double = (expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5) + waddle + giggle + lean
             let eyes = CGVector(dx: facingRight ? look.dx : -look.dx, dy: look.dy)
-            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14, halo: halo, look: eyes, blissful: blissful)
+            CritterView(genome: genome, expression: expression, weight: weight, blinking: blinkCycle < 0.14, halo: halo, look: eyes, blissful: blissful, shine: shine)
                 .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath, anchor: .bottom)
                 .rotationEffect(.degrees(sway), anchor: .bottom)
+                .overlay {
+                    if shine > 0.02 { Twinkles(time: t, amount: shine, girth: weight) }
+                }
                 .offset(y: bounce + step)
         }
+    }
+}
+
+/// Twinkling stars around a freshly bathed critter.
+private struct Twinkles: View {
+    let time: TimeInterval
+    let amount: Double
+    let girth: Double
+
+    var body: some View {
+        Canvas { c, size in
+            let count = 3 + Int(amount * 7)
+            let width = 0.34 + (girth / 100) * 0.16
+            let colors: [Color] = [.white, .butter, .white, .sky, .pink]
+            for i in 0..<count {
+                let angle = Double(i) * 2.399 + 0.6
+                let twinkle = max(0, sin(time * 2.6 + Double(i) * 1.9))
+                guard twinkle > 0.05 else { continue }
+                let x = size.width * (0.5 + cos(angle) * width)
+                let y = size.height * (0.56 + sin(angle) * 0.34)
+                let r = size.width * (0.025 + 0.035 * twinkle) * (0.6 + 0.4 * amount)
+                c.sparkle(x, y, r, colors[i % colors.count].opacity(min(1, amount * 1.6) * twinkle))
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -69,6 +101,7 @@ private struct CritterPainter {
     let blinking: Bool
     let halo: Bool
     let look: CGVector
+    let shine: Double
     var context: GraphicsContext
 
     private var body: Color { Color(hex: genome.palette.body) }
@@ -225,6 +258,17 @@ private struct CritterPainter {
             path.addCurve(to: CGPoint(x: 40, y: 150), control1: CGPoint(x: 60, y: 182), control2: CGPoint(x: 42, y: 172))
             ctx.fill(path, with: .color(body))
             ctx.fill(Path(ellipseIn: CGRect(x: 62, y: 128, width: 76, height: 44)), with: .color(belly))
+        }
+        if shine > 0 {
+            let gloss = Color.white.opacity(0.65 * shine)
+            let top: CGFloat = genome.body == .round ? 66 : 58
+            let highlight = Path(ellipseIn: CGRect(x: -22, y: -8, width: 44, height: 16))
+                .applying(CGAffineTransform(translationX: 70, y: top + 26).rotated(by: -0.6))
+            ctx.fill(highlight, with: .color(gloss))
+            ctx.fill(Path(ellipseIn: CGRect(x: 52, y: top + 44, width: 9, height: 9)), with: .color(gloss))
+            let rim = Path(ellipseIn: CGRect(x: 120, y: top + 70, width: 28, height: 10))
+                .applying(CGAffineTransform(translationX: 134, y: top + 75).rotated(by: 0.9).translatedBy(x: -134, y: -(top + 75)))
+            ctx.fill(rim, with: .color(Color.white.opacity(0.35 * shine)))
         }
         switch genome.marking {
         case .none:

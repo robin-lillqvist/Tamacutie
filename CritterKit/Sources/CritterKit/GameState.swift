@@ -175,8 +175,9 @@ public struct GameState: Codable, Equatable, Sendable {
 
     public mutating func finishBath(useShampoo: Bool, now: Date) -> Int {
         guard var pet, pet.isAlive else { return 0 }
-        pet.bathe(at: now)
-        if useShampoo, consume("shampoo") {
+        let shampoo = useShampoo && consume("shampoo")
+        pet.bathe(at: now, shampoo: shampoo)
+        if shampoo {
             pet.needs.love = min(100, pet.needs.love + 10)
             pet.needs.fun = min(100, pet.needs.fun + 10)
         }

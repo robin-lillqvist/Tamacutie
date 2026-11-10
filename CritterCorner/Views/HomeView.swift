@@ -187,7 +187,8 @@ struct HomeView: View {
             look: lookVector(from: center),
             lean: lean,
             wiggle: wiggle,
-            blissful: (petting && pet.expression(at: store.now) != .ignoring) || chomping || wiggle
+            blissful: (petting && pet.expression(at: store.now) != .ignoring) || chomping || wiggle,
+            shine: pet.shine(at: store.now)
         )
         .frame(width: 300, height: 300)
         .scaleEffect(pet.isAsleep ? 0.75 : 1, anchor: .bottom)
