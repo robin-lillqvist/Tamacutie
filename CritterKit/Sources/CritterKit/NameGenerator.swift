@@ -1,17 +1,23 @@
-/// Cute first name + an epic two-part surname: "Mochi" + "Stjärn" + "bubbel".
+/// A cute first name plus a grand surname, often with a noble or clan prefix:
+/// "Tindra MacKnasgurka", "Smulan von Krambulle", "Mochi Stjärnbubbel".
 public enum NameGenerator {
     public static let firstNames = [
-        "Mochi", "Zuko", "Pip", "Kiki", "Bao", "Nori", "Taro", "Yuzu", "Miso", "Boba",
-        "Pudding", "Smulan", "Tofu", "Kiwi", "Juno", "Kexet", "Pärlan", "Pyret", "Ziggy", "Momo",
-        "Nötis", "Luma", "Wasabi", "Coco", "Fia", "Bullen", "Poppy", "Mulle", "Suki", "Blopp",
+        "Mochi", "Pip", "Kiki", "Bao", "Nori", "Yuzu", "Miso", "Boba", "Momo", "Coco",
+        "Pudding", "Smulan", "Kexet", "Pärlan", "Pyret", "Nötis", "Bullen", "Mulle", "Blopp", "Fia",
+        "Tindra", "Sötis", "Majken", "Ebbe", "Stina", "Totte", "Saga", "Lillan", "Tussan", "Knytte",
+        "Gullan", "Bosse", "Vilda", "Pelle", "Doris", "Sigge", "Elsa", "Bamse", "Mysan", "Pippi",
     ]
+    /// Written as their own word ("von Krambulle") or glued on ("MacKnasgurka").
+    public static let prefixes = ["von ", "af ", "Mac", "van der ", "de la "]
     public static let surnameStarts = [
-        "Stjärn", "Mån", "Åsk", "Glitter", "Vingel", "Moln", "Gnist", "Komet", "Sammet", "Honungs",
-        "Pixel", "Regnbågs", "Frost", "Sol", "Kosmo", "Blänk", "Mys", "Pöl", "Dröm", "Snö",
+        "Stjärn", "Mån", "Glitter", "Moln", "Gnist", "Sammet", "Honungs", "Regnbågs", "Mys", "Dröm",
+        "Kram", "Knas", "Gos", "Kanel", "Fnitter", "Smul", "Pussel", "Socker", "Busig", "Lingon",
+        "Hallon", "Bus", "Pannkaks", "Snuttig", "Krusidull",
     ]
     public static let surnameEnds = [
-        "bubbel", "böna", "puff", "fena", "tass", "blomma", "nos", "pop", "fluff", "glans",
-        "stövel", "knapp", "droppe", "bär", "kula", "mums", "plopp", "kind", "vippa", "tuss",
+        "bubbel", "böna", "puff", "tass", "blomma", "nos", "fluff", "knapp", "droppe", "mums",
+        "bulle", "gurka", "korv", "tuss", "kaka", "boll", "knopp", "sylt", "pudding", "strumpa",
+        "näsa", "klump", "plutt", "snigel", "tofs",
     ]
 
     public static func name(seed: UInt64) -> String {
@@ -21,8 +27,9 @@ public enum NameGenerator {
 
     public static func name<TGenerator: RandomNumberGenerator>(using rng: inout TGenerator) -> String {
         let first = firstNames.randomElement(using: &rng)!
-        let start = surnameStarts.randomElement(using: &rng)!
-        let end = surnameEnds.randomElement(using: &rng)!
-        return "\(first) \(start)\(end)"
+        let surname = surnameStarts.randomElement(using: &rng)! + surnameEnds.randomElement(using: &rng)!
+        // Two in three get a prefix; the rest keep a plain grand surname.
+        let prefix = Int.random(in: 0..<3, using: &rng) == 0 ? "" : prefixes.randomElement(using: &rng)!
+        return "\(first) \(prefix)\(surname)"
     }
 }

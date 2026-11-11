@@ -22,14 +22,27 @@ final class GenomeTests: XCTestCase {
         }
     }
 
-    func testNamesAreDeterministicAndThreeParts() {
+    func testNamesAreDeterministicAndBuiltFromParts() {
         XCTAssertEqual(NameGenerator.name(seed: 99), NameGenerator.name(seed: 99))
-        let name = NameGenerator.name(seed: 99)
-        let parts = name.split(separator: " ")
-        XCTAssertEqual(parts.count, 2)
-        XCTAssertTrue(NameGenerator.firstNames.contains(String(parts[0])))
-        XCTAssertTrue(NameGenerator.surnameStarts.contains { parts[1].hasPrefix($0) })
-        XCTAssertTrue(NameGenerator.surnameEnds.contains { parts[1].hasSuffix($0) })
+        for seed in 0..<200 as Range<UInt64> {
+            let name = NameGenerator.name(seed: seed)
+            let first = String(name.prefix { $0 != " " })
+            XCTAssertTrue(NameGenerator.firstNames.contains(first), name)
+            var rest = String(name.dropFirst(first.count + 1))
+            if let prefix = NameGenerator.prefixes.first(where: { rest.hasPrefix($0) }) {
+                rest.removeFirst(prefix.count)
+            }
+            XCTAssertTrue(NameGenerator.surnameStarts.contains { rest.hasPrefix($0) }, name)
+            XCTAssertTrue(NameGenerator.surnameEnds.contains { rest.hasSuffix($0) }, name)
+            XCTAssertFalse(rest.contains(" "), name)
+        }
+    }
+
+    func testNamesMixPrefixesAndPlainSurnames() {
+        let names = (0..<300 as Range<UInt64>).map { NameGenerator.name(seed: $0) }
+        XCTAssertTrue(names.contains { $0.contains(" von ") })
+        XCTAssertTrue(names.contains { $0.contains(" Mac") })
+        XCTAssertTrue(names.contains { $0.split(separator: " ").count == 2 && !$0.contains("Mac") })
     }
 
     func testNamesVary() {

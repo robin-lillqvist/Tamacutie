@@ -304,13 +304,13 @@ struct HomeView: View {
 
     private func dock(pet: Pet, layout: RoomLayout) -> some View {
         Dock {
-            DockButton(title: "Mata", systemName: "fork.knife", fill: .peachLight, highlighted: showFridge || pet.needs.hunger < 25) {
+            DockButton(title: "Mata", systemName: "fork.knife", fill: .peachLight, highlighted: showFridge, nudge: pet.needs.hunger < 25) {
                 withAnimation(.spring) { showFridge.toggle() }
             }
-            DockButton(title: "Vatten", systemName: "drop.fill", fill: .skyLight, highlighted: pet.needs.thirst < 25) { refillWater() }
-            DockButton(title: "Leka", systemName: "tennisball.fill", fill: .butterLight, highlighted: pet.needs.fun < 25) { startPlay(.ball, layout: layout) }
-            DockButton(title: pet.isAsleep ? "Väck" : "Sova", systemName: pet.isAsleep ? "sun.max.fill" : "moon.zzz.fill", fill: Color(hex: 0xECE4FF), highlighted: pet.needs.energy < 20 && !pet.isAsleep) { toggleSleep() }
-            DockButton(title: "Bada", systemName: "bathtub.fill", fill: .mintLight, highlighted: pet.needs.hygiene < 25) { goOut(.bath) }
+            DockButton(title: "Vatten", systemName: "drop.fill", fill: .skyLight, nudge: pet.needs.thirst < 25) { refillWater() }
+            DockButton(title: "Leka", systemName: "tennisball.fill", fill: .butterLight, nudge: pet.needs.fun < 25) { startPlay(.ball, layout: layout) }
+            DockButton(title: pet.isAsleep ? "Väck" : "Sova", systemName: pet.isAsleep ? "sun.max.fill" : "moon.zzz.fill", fill: Color(hex: 0xECE4FF), nudge: pet.isAsleep || pet.needs.energy < 20, bouncy: pet.isAsleep) { toggleSleep() }
+            DockButton(title: "Bada", systemName: "bathtub.fill", fill: .mintLight, nudge: pet.needs.hygiene < 25) { goOut(.bath) }
             DockButton(title: "Parken", systemName: "tree.fill", fill: Color(hex: 0xE3F7DC)) { goOut(.park) }
             DockButton(title: "Handla", systemName: "basket.fill", fill: .pinkLight) { navigate(.market) }
             DockButton(title: "Inred", systemName: "sofa.fill", fill: .lavenderLight) { navigate(.decor) }

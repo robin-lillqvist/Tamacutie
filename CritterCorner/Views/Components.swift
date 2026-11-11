@@ -81,7 +81,12 @@ struct DockButton: View {
     let title: String
     let systemName: String
     let fill: Color
+    /// Selected state, e.g. the toy currently in hand.
     var highlighted = false
+    /// "Press me": a thin spinning rainbow border.
+    var nudge = false
+    /// A bit larger and bouncing, for the one button that matters right now.
+    var bouncy = false
     var width: CGFloat = 92
     let action: () -> Void
 
@@ -99,8 +104,59 @@ struct DockButton: View {
             .frame(width: width, height: 84)
             .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(fill))
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Color.ink, lineWidth: highlighted ? 3 : 0))
+            .overlay { if nudge { RainbowBorder(cornerRadius: 26) } }
+            .modifier(Bounce(active: bouncy))
         }
         .buttonStyle(SquishyButtonStyle())
+    }
+}
+
+/// A thin rainbow outline whose colours rotate around the shape.
+struct RainbowBorder: View {
+    var cornerRadius: CGFloat
+    var lineWidth: CGFloat = 2
+    /// Seconds per full turn.
+    var period: Double = 2.4
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let colors: [Color] = [
+        Color(hex: 0xFF5E7E), Color(hex: 0xFFA24C), Color(hex: 0xFFD84D), Color(hex: 0x6ED98A),
+        Color(hex: 0x52B8FF), Color(hex: 0x9A7BFF), Color(hex: 0xFF5E7E),
+    ]
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let turn = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(
+                    AngularGradient(colors: Self.colors, center: .center, angle: .degrees(turn * 360)),
+                    lineWidth: lineWidth
+                )
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// Grows slightly and hops up and down while active.
+private struct Bounce: ViewModifier {
+    let active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if active {
+            TimelineView(.animation(paused: reduceMotion)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                // A hop every 1.2 s: quick rise, soft landing, then rest.
+                let phase = t.truncatingRemainder(dividingBy: 1.2) / 1.2
+                let hop = phase < 0.45 ? sin(phase / 0.45 * .pi) : 0
+                let squash = phase >= 0.45 && phase < 0.6 ? sin((phase - 0.45) / 0.15 * .pi) : 0
+                content
+                    .scaleEffect(x: 1.12 + squash * 0.05, y: 1.12 - squash * 0.06, anchor: .bottom)
+                    .offset(y: -hop * 9)
+            }
+        } else {
+            content
+        }
     }
 }
 

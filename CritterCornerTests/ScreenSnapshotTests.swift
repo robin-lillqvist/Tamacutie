@@ -20,7 +20,7 @@ final class ScreenSnapshotTests: XCTestCase {
         store.skipAhead(hours: 1)
     }
 
-    private func render<TView: View>(_ name: String, _ view: TView, size: CGSize = CGSize(width: 1180, height: 820)) throws {
+    private func render<TView: View>(_ name: String, _ view: TView, size: CGSize = CGSize(width: 1180, height: 820), minBytes: Int = 20_000) throws {
         let host = view
             .environment(store)
             .environment(Toaster())
@@ -30,7 +30,7 @@ final class ScreenSnapshotTests: XCTestCase {
         let image = try XCTUnwrap(renderer.uiImage, "\(name) did not render")
         XCTAssertEqual(image.size.width, size.width)
         let data = try XCTUnwrap(image.pngData())
-        XCTAssertGreaterThan(data.count, 20_000, "\(name) looks blank")
+        XCTAssertGreaterThan(data.count, minBytes, "\(name) looks blank")
         if let dir = ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] {
             try data.write(to: URL(fileURLWithPath: dir).appending(path: "\(name).png"))
         }
@@ -150,6 +150,23 @@ final class ScreenSnapshotTests: XCTestCase {
             XCTAssertEqual(DayPhase(date: time).rawValue, name)
             try render("room-\(name)", RoomBackdrop(size: CGSize(width: 1194, height: 830), time: time).frame(width: 1194, height: 830).scaleEffect(1180 / 1194, anchor: .topLeading))
         }
+    }
+
+    /// Asleep: the wake button is bigger, bounces and wears the rainbow border.
+    func testHomeAsleep() throws {
+        store.perform { state, now in _ = state.pet?.goToSleep(at: now) }
+        XCTAssertTrue(store.pet?.isAsleep ?? false)
+        try render("home-asleep", HomeView())
+    }
+
+    /// Low needs put a rainbow border on the buttons you should press.
+    func testDockNudges() throws {
+        let dock = Dock {
+            DockButton(title: "Mata", systemName: "fork.knife", fill: .peachLight, nudge: true) {}
+            DockButton(title: "Vatten", systemName: "drop.fill", fill: .skyLight) {}
+            DockButton(title: "Väck", systemName: "sun.max.fill", fill: Color(hex: 0xECE4FF), nudge: true, bouncy: true) {}
+        }
+        try render("dock-nudges", dock.padding(40).background(Color.cream), size: CGSize(width: 500, height: 220), minBytes: 8_000)
     }
 
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
