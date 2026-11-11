@@ -5,22 +5,6 @@ private enum ParkGame {
     case fetch, dig
 }
 
-private struct Flight {
-    let id = UUID()
-    let start: Date
-    let from: CGPoint
-    let to: CGPoint
-    static let duration: TimeInterval = 1.8
-
-    func point(at date: Date) -> CGPoint {
-        let t = min(1, max(0, date.timeIntervalSince(start) / Self.duration))
-        let x = from.x + (to.x - from.x) * t
-        let arc = -sin(t * .pi) * 260
-        let y = from.y + (to.y - from.y) * t + arc
-        return CGPoint(x: x, y: y)
-    }
-}
-
 private struct Mound: Identifiable {
     let id: Int
     let point: CGPoint
@@ -33,37 +17,61 @@ struct ParkView: View {
     @Environment(\.navigate) private var navigate
 
     @State private var game = ParkGame.fetch
-    @State private var flight: Flight?
-    @State private var catches = 0
-    @State private var combo = 0
+    @State private var fetch: ParkFetch?
+    @State private var t = ParkView.clock()
     @State private var coinsFound = 0
-    @State private var petX: CGFloat = 560
-    @State private var petHop = false
-    @State private var petWalking = false
-    @State private var petFacingRight = true
     @State private var bubble: String? = "Kom, vi leker!"
+    @State private var friendBubble: String?
     @State private var floating: [FloatingText] = []
     @State private var mounds: [Mound] = []
     @State private var digsLeft = 3
     @State private var friend = Genome.random()
+    @State private var hugUntil = 0.0
 
     private let shadow = Color(hex: 0xA9D4F0)
+    private static let friendSize: CGFloat = 170
+    private static let petSize: CGFloat = 240
+
+    static func clock() -> Double { Date().timeIntervalSinceReferenceDate }
+
+    private var friendName: String { String(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) }
 
     var body: some View {
         DesignCanvas(background: Color(hex: 0xCDEBFF)) { size in
             if let pet = store.pet {
                 scene(pet: pet, size: size)
+                    .onAppear { setUp(size: size) }
             }
         }
         .onAppear { if mounds.isEmpty { mounds = Self.makeMounds() } }
+        .task { await loop() }
     }
 
     private func groundY(_ size: CGSize) -> CGFloat { size.height * 0.78 }
 
+    private func setUp(size: CGSize) {
+        guard fetch == nil else { return }
+        let ground = groundY(size)
+        let layout = ParkFetch.Layout(
+            groundY: ground, hand: Point2(150, ground - 120),
+            minX: 360, maxX: 1060, friendX: 1040, catchHeight: 190
+        )
+        fetch = ParkFetch(layout: layout, petX: 560, now: Self.clock())
+        friendBubble = "\(friendName) vill leka! Tryck på mig."
+    }
+
     private func scene(pet: Pet, size: CGSize) -> some View {
         let ground = groundY(size)
+        let hugging = t < hugUntil
+        let hugHop = hugging ? abs(sin((hugUntil - t) * 9)) * 40 : 0
         return ZStack(alignment: .topLeading) {
             ParkBackdrop(size: size)
+
+            // Taps anywhere on the field: throw, catch, or invite the friend.
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(SpatialTapGesture().onEnded { tap($0.location) })
+                .accessibilityIdentifier("park-field")
 
             if game == .dig {
                 ForEach(mounds) { mound in
@@ -77,35 +85,39 @@ struct ParkView: View {
                 }
             }
 
-            LiveCritterView(genome: friend, expression: .happy)
-                .frame(width: 150, height: 150)
-                .position(x: 1000, y: ground - 120)
-                .allowsHitTesting(false)
-            SpeechBubble(text: "\(NameGenerator.name(seed: friend.seed).split(separator: " ")[0]) vill leka!", tailOnLeft: false)
-                .position(x: 940, y: ground - 230)
-
-            LiveCritterView(genome: pet.genome, expression: petHop || petWalking ? .excited : .happy, weight: pet.weight, walking: petWalking, facingRight: petFacingRight, blissful: petHop, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
-                .frame(width: 240, height: 240)
-                .offset(y: petHop ? -60 : 0)
-                .position(x: petX, y: ground - 110)
-                .allowsHitTesting(false)
-
-            if let bubble {
-                SpeechBubble(text: bubble)
-                    .position(x: petX + 170, y: ground - 270)
-                    .transition(.opacity)
-            }
-
-            if let flight {
-                TimelineView(.animation) { timeline in
-                    let point = flight.point(at: timeline.date)
-                    Button { catchFrisbee(flight, at: point) } label: {
-                        Frisbee().frame(width: 110, height: 60).contentShape(Rectangle().inset(by: -30))
-                    }
-                    .buttonStyle(SquishyButtonStyle())
-                    .position(point)
-                    .accessibilityLabel("Frisbee. Tryck för att fånga!")
+            if let fetch {
+                LiveCritterView(genome: friend, expression: fetch.friendJoined ? .excited : .happy, facingRight: false, blissful: hugging)
+                    .frame(width: Self.friendSize, height: Self.friendSize)
+                    .offset(y: -(fetch.hop(.friend, at: t) + hugHop))
+                    .position(x: fetch.friendX, y: ground - Self.friendSize / 2 + 10)
+                    .allowsHitTesting(false)
+                    .accessibilityElement()
+                    .accessibilityLabel("Kompisen \(friendName)")
+                    .accessibilityIdentifier("park-friend")
+                if let friendBubble {
+                    SpeechBubble(text: friendBubble, tailOnLeft: false, maxWidth: 240)
+                        .position(x: fetch.friendX - 70, y: ground - 250)
+                        .allowsHitTesting(false)
                 }
+
+                let petHop = fetch.hop(.pet, at: t) + hugHop
+                LiveCritterView(genome: pet.genome, expression: petHop > 0 || fetch.isRunning(.pet) ? .excited : .happy, weight: pet.weight, walking: fetch.isRunning(.pet), facingRight: fetch.petFacingRight, blissful: hugging, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
+                    .frame(width: Self.petSize, height: Self.petSize)
+                    .offset(y: -petHop)
+                    .position(x: fetch.petX, y: ground - 110)
+                    .allowsHitTesting(false)
+
+                if let bubble {
+                    SpeechBubble(text: bubble, maxWidth: 260)
+                        .position(x: min(fetch.petX + 150, 880), y: ground - 290)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                }
+
+                if game == .fetch {
+                    hand(fetch)
+                }
+                ball(fetch)
             }
 
             FloatingTextLayer(items: floating)
@@ -113,6 +125,47 @@ struct ParkView: View {
             hud(size: size)
         }
         .frame(width: size.width, height: size.height)
+    }
+
+    /// Your hand in the corner: the ball sits in it when it's your turn.
+    private func hand(_ fetch: ParkFetch) -> some View {
+        Image(systemName: "hand.raised.fill")
+            .font(.system(size: 44, weight: .bold))
+            .foregroundStyle(Color.peach)
+            .frame(width: 96, height: 96)
+            .background(Circle().fill(.white.opacity(0.85)))
+            .overlay { if fetch.canThrow { RainbowBorder(cornerRadius: 48, lineWidth: 3) } }
+            .position(x: fetch.layout.hand.x, y: fetch.layout.hand.y + 40)
+            .allowsHitTesting(false)
+    }
+
+    private func ball(_ fetch: ParkFetch) -> some View {
+        let position = fetch.ballPosition(at: t)
+        let coming = fetch.isComingToYou(at: t)
+        return ZStack {
+            if coming {
+                let pulse = 1 + sin(t * 10) * 0.08
+                Circle()
+                    .strokeBorder(Color.white, style: StrokeStyle(lineWidth: 5, dash: [10, 8]))
+                    .frame(width: 130, height: 130)
+                    .scaleEffect(pulse)
+                Text("Fånga!")
+                    .font(.cute(22, .bold))
+                    .foregroundStyle(Color.ink)
+                    .padding(.horizontal, 12).padding(.vertical, 4)
+                    .background(Capsule().fill(.white))
+                    .offset(y: -86)
+            }
+            BallView()
+                .frame(width: 60, height: 60)
+                .rotationEffect(.degrees(t * 360))
+        }
+        .position(x: position.x, y: position.y)
+        .allowsHitTesting(false)
+        .accessibilityElement()
+        .accessibilityLabel("Boll")
+        .accessibilityValue(coming ? "fånga" : "")
+        .accessibilityIdentifier("park-ball")
     }
 
     private func hud(size: CGSize) -> some View {
@@ -131,14 +184,15 @@ struct ParkView: View {
                 if game == .fetch {
                     Text("Apport!").font(.cute(20, .bold))
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(catches)").font(.cute(44, .bold))
+                        Text("\(fetch?.catches ?? 0)").font(.cute(44, .bold))
+                            .accessibilityIdentifier("park-score")
                         Text("fångade").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
                     }
-                    if combo >= 2 {
-                        Text("Kombo ×\(combo)").font(.cute(16, .bold)).padding(.horizontal, 12).padding(.vertical, 6)
+                    if let streak = fetch?.streak, streak >= 2 {
+                        Text("Kombo ×\(streak)").font(.cute(16, .bold)).padding(.horizontal, 12).padding(.vertical, 6)
                             .background(Capsule().fill(Color.pinkLight))
                     }
-                    Text("Kasta, och tryck sen på frisbeen för att fånga den!").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
+                    Text("Tryck på gräset för att kasta. Tryck på bollen när den kommer tillbaka!").font(.cute(15, .medium)).foregroundStyle(Color.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("Gräv!").font(.cute(20, .bold))
@@ -156,13 +210,13 @@ struct ParkView: View {
             .position(x: 24 + 115, y: 130 + 110)
 
             Dock(shadow: shadow) {
-                DockButton(title: flight == nil ? "Kasta" : "Flyger!", systemName: "circle.circle.fill", fill: .pinkLight, highlighted: game == .fetch, width: 110) {
+                DockButton(title: "Kasta", systemName: "tennisball.fill", fill: .pinkLight, highlighted: game == .fetch, nudge: game == .fetch && fetch?.canThrow == true, width: 110) {
                     game = .fetch
-                    throwFrisbee()
+                    throwBall(towardX: .random(in: 420...1000))
                 }
+                .accessibilityIdentifier("park-throw")
                 DockButton(title: "Gräv", systemName: "sparkle.magnifyingglass", fill: Color(hex: 0xF3E6D4), highlighted: game == .dig, width: 110) {
                     game = .dig
-                    flight = nil
                     say(digsLeft > 0 ? "Jag luktar skatter!" : "Allt är uppgrävt!")
                 }
                 DockButton(title: "Gå hem", systemName: "house.fill", fill: Color(hex: 0xE3F7DC), width: 110) { goHome() }
@@ -173,39 +227,116 @@ struct ParkView: View {
 
     // MARK: Fetch
 
-    private func throwFrisbee() {
-        guard flight == nil else { return }
-        let launch = Flight(start: .now, from: CGPoint(x: 120, y: 520), to: CGPoint(x: .random(in: 520...880), y: .random(in: 480...560)))
-        flight = launch
-        run(to: launch.to.x - 60, duration: Flight.duration)
-        Task {
-            try? await Task.sleep(for: .seconds(Flight.duration))
-            guard flight?.id == launch.id else { return }
-            flight = nil
-            combo = 0
-            say("Åh nej, missade!")
+    private func loop() async {
+        var last = Self.clock()
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(16))
+            let now = Self.clock()
+            let dt = min(0.05, now - last)
+            last = now
+            t = now
+            guard var game = fetch else { continue }
+            let events = game.update(to: now, dt: dt)
+            fetch = game
+            for event in events { react(to: event, in: game) }
         }
     }
 
-    private func catchFrisbee(_ caught: Flight, at point: CGPoint) {
-        guard flight?.id == caught.id else { return }
-        flight = nil
-        catches += 1
-        combo += 1
-        let reward = 1 + (combo >= 3 ? 1 : 0)
-        coinsFound += reward
-        floating.append(FloatingText(text: "+\(reward)", point: point))
-        Haptics.success()
-        SoundFX.play(.squeak)
-        run(to: point.x - 40, duration: 0.3)
-        withAnimation(.spring(duration: 0.3)) { petHop = true }
-        Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            withAnimation(.spring(duration: 0.3)) { petHop = false }
-            try? await Task.sleep(for: .seconds(1))
-            floating.removeAll()
+    private func tap(_ point: CGPoint) {
+        guard var game = fetch else { return }
+        let now = Self.clock()
+        if game.tryCatch(at: Point2(point.x, point.y), at: now) {
+            fetch = game
+            yourCatch(at: point, streak: game.streak)
+            return
         }
-        say(combo >= 3 ? "Kombo ×\(combo)! Jag är bäst!" : "Tog den!")
+        let friendFrame = CGRect(x: game.friendX - Self.friendSize / 2, y: game.layout.groundY - Self.friendSize - 30, width: Self.friendSize, height: Self.friendSize + 40)
+        if friendFrame.insetBy(dx: -20, dy: -20).contains(point) {
+            playWithFriend()
+            return
+        }
+        if self.game == .fetch, point.y > 180, point.y < game.layout.groundY + 60, point.x > 300 {
+            throwBall(towardX: point.x)
+        }
+    }
+
+    private func throwBall(towardX x: CGFloat) {
+        guard var game = fetch, game.throwBall(towardX: x, at: Self.clock()) else { return }
+        fetch = game
+        SoundFX.play(.boop)
+        Haptics.tap()
+        say("Jag tar den!")
+    }
+
+    private func playWithFriend() {
+        guard var game = fetch else { return }
+        if game.joinFriend() {
+            fetch = game
+            friendBubble = "Ja! Vi leker apport!"
+            say("En kompis!")
+        } else {
+            friendBubble = "Kram!"
+            say("Kompisar!")
+        }
+        hugUntil = Self.clock() + 1.2
+        SoundFX.play(.squeak)
+        Haptics.success()
+        let ground = game.layout.groundY
+        addFloat("♥", at: CGPoint(x: game.friendX, y: ground - 200))
+        addFloat("♥", at: CGPoint(x: game.petX, y: ground - 240))
+        Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            if fetch?.friendJoined == true { friendBubble = nil }
+        }
+    }
+
+    private func react(to event: ParkFetch.Event, in game: ParkFetch) {
+        switch event {
+        case .caught(by: .pet):
+            reward(1, at: game.catchPoint(.pet))
+            SoundFX.play(.squeak)
+            Haptics.tap()
+            say("Tog den!")
+        case .caught(by: .friend):
+            reward(1, at: game.catchPoint(.friend))
+            SoundFX.play(.squeak)
+            friendBubble = "Tog den!"
+        case .caught(by: .you):
+            break
+        case .thrown(by: .pet):
+            say(game.friendJoined ? "Till dig, \(friendName)!" : "Fånga!")
+        case .thrown(by: .friend):
+            friendBubble = "Fånga!"
+            say("Fånga!")
+        case .thrown(by: .you):
+            break
+        case .dropped:
+            SoundFX.play(.boop)
+            friendBubble = nil
+            say("Oj! Kasta igen!")
+        }
+    }
+
+    private func yourCatch(at point: CGPoint, streak: Int) {
+        reward(1 + (streak >= 3 ? 1 : 0), at: Point2(point.x, point.y))
+        Haptics.success()
+        SoundFX.play(.coin)
+        friendBubble = nil
+        say(streak >= 3 ? "Kombo ×\(streak)! Du är bäst!" : "Bra fångat!")
+    }
+
+    private func reward(_ coins: Int, at point: Point2) {
+        coinsFound += coins
+        addFloat("+\(coins)", at: CGPoint(x: point.x, y: point.y - 40))
+    }
+
+    private func addFloat(_ text: String, at point: CGPoint) {
+        let item = FloatingText(text: text, point: point)
+        floating.append(item)
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            floating.removeAll { $0.id == item.id }
+        }
     }
 
     // MARK: Dig
@@ -224,18 +355,8 @@ struct ParkView: View {
         coinsFound += reward
         Haptics.tap()
         SoundFX.play(reward > 0 ? .coin : .boop)
-        run(to: mound.point.x, duration: 0.6)
+        fetch?.walkPet(to: mound.point.x)
         say(reward == 0 ? "Bara en blomma. Så fin!" : (reward >= 5 ? "En skatt!!" : "Åh, mynt!"))
-    }
-
-    private func run(to x: CGFloat, duration: Double) {
-        petFacingRight = x > petX
-        petWalking = true
-        withAnimation(.easeInOut(duration: duration)) { petX = x }
-        Task {
-            try? await Task.sleep(for: .seconds(duration))
-            petWalking = false
-        }
     }
 
     // MARK: Leaving
@@ -249,18 +370,6 @@ struct ParkView: View {
 
     private func say(_ text: String) {
         withAnimation { bubble = text }
-    }
-}
-
-private struct Frisbee: View {
-    var body: some View {
-        TimelineView(.animation) { timeline in
-            SketchView(width: 110, height: 60) { c in
-                c.oval(55, 30, 46, 13, .coral)
-                c.oval(55, 26, 30, 7, .pink)
-            }
-            .rotationEffect(.degrees(sin(timeline.date.timeIntervalSinceReferenceDate * 8) * 10))
-        }
     }
 }
 
