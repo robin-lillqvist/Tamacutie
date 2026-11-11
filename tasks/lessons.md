@@ -14,3 +14,7 @@
 
 ## Rate-limit interactions in the model
 - Gestures fire many times a second. Every care action a child can repeat (stroke, tickle) needs a minimum interval in CritterKit, and chatty speech must not replace a bubble that just appeared. Consequences like grumpiness need a visible warning first and sustained misuse, never a few fast taps.
+
+## Test model rules with time passing
+- Needs decay continuously, so "exactly full" never lasts on a device. The over-petting rule only passed its unit tests because those never advanced time between strokes. When a rule compares a decaying value to a limit, test it with `advance(to:)` between actions.
+- UI-test screenshots only land on disk via `TEST_RUNNER_SNAPSHOT_DIR` (xcodebuild strips the prefix). Plain `SNAPSHOT_DIR` silently writes nothing.

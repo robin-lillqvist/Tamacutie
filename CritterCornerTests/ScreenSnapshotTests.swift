@@ -92,7 +92,7 @@ final class ScreenSnapshotTests: XCTestCase {
 
     /// Twelve critters in different moods, to judge the art style at a glance.
     func testGallery() throws {
-        let moods: [Mood] = [.content, .happy, .excited, .content, .hungry, .sad, .content, .excited, .sleepy, .content, .happy, .ignoring]
+        let moods: [Mood] = [.content, .happy, .excited, .content, .hungry, .sad, .content, .excited, .sleepy, .furious, .happy, .ignoring]
         let grid = VStack(spacing: 6) {
             ForEach(0..<2, id: \.self) { row in
                 HStack(spacing: 6) {
@@ -126,12 +126,13 @@ final class ScreenSnapshotTests: XCTestCase {
                     CritterView(genome: genomes[0], expression: .asleep, style: style).frame(width: 150, height: 150)
                     CritterView(genome: genomes[1], expression: .sad, coat: CritterCoat(mud: BathSession(seed: genomes[1].seed, dirtiness: 0.9).dirt), style: style).frame(width: 150, height: 150)
                     CritterView(genome: genomes[2], expression: .sick, coat: CritterCoat(sickly: true), style: style).frame(width: 150, height: 150)
+                    CritterView(genome: genomes[0], expression: .furious, style: style).frame(width: 150, height: 150)
                 }
             }
         }
         .padding(16)
         .background(Color.cream)
-        try render("styles", sheet, size: CGSize(width: 1180, height: 680))
+        try render("styles", sheet, size: CGSize(width: 1340, height: 680))
     }
 
     func testLongSpeechWrapsInsteadOfGrowing() throws {

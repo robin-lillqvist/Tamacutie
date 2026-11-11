@@ -118,6 +118,19 @@ public struct Playground: Sendable {
         bubbles.append(Bubble(id: UUID(), position: point, born: time, phase: Double(bubbles.count) * 1.7))
     }
 
+    /// The critter throws the ball itself, to go and fetch it. Only when it is free and the ball lies still.
+    @discardableResult
+    public mutating func tossBallItself(towardRight: Bool, strength: Double = 700) -> Bool {
+        guard ballState == .resting, task == .idle else { return false }
+        facingRight = towardRight
+        let side = towardRight ? 1.0 : -1.0
+        ball = Point2(critterX + side * 40, config.floorY - config.critterSize * 0.5)
+        ballVelocity = Point2(side * strength, -900)
+        ballState = .flying
+        ballIsFresh = true
+        return true
+    }
+
     // MARK: Simulation
 
     public mutating func step(_ dt: Double) -> [Event] {

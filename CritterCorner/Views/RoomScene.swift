@@ -7,6 +7,9 @@ struct RoomLayout {
     var floorTop: CGFloat { size.height * 0.66 }
     var petCenter: CGPoint { CGPoint(x: 640, y: size.height * 0.86 - 150) }
     var bowlCenter: CGPoint { CGPoint(x: 960, y: floorTop + 90) }
+    /// The top of the window sill (RoomGeometry draws the window ending 130 above the floor line).
+    var windowSillY: CGFloat { floorTop - 128 }
+    var fishBowl: CGPoint { CGPoint(x: 462, y: floorTop - 234) }
 
     func point(for decor: PlacedDecor) -> CGPoint {
         CGPoint(x: decor.x * size.width, y: decor.y * size.height)

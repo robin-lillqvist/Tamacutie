@@ -28,6 +28,8 @@ public enum Rules {
     public static let digestionDelay: TimeInterval = 45 * 60
 
     public static let strokeLove = 4.0
+    /// Love counts as full from here; it trickles away a little between strokes, so exactly 100 never lasts.
+    public static let loveFullAt = 99.0
     public static let missedYouAfter: TimeInterval = 24 * 3600
     public static let missedYouDuration: TimeInterval = 3600
     public static let loveFullCooldown: TimeInterval = 15 * 60
@@ -39,6 +41,21 @@ public enum Rules {
     public static let overPetLimit = 7
     /// A pause this long forgives earlier over-petting.
     public static let overPetForgiveAfter: TimeInterval = 20
+    /// Bothering it while it wants space (strokes, tickles, taps) counts once per this interval.
+    public static let botherInterval: TimeInterval = 2
+    public static let annoyancePerBother = 2.5
+    /// Grumpy, then sad from this much annoyance, then furious. About a minute of steady pestering.
+    public static let upsetAt = 35.0
+    public static let furiousAt = 80.0
+    /// Past this it warns that it's about to lose it.
+    public static let furyWarningAt = 60.0
+    public static let annoyanceMax = 100.0
+    /// Per hour: left alone, furious fades in about five minutes and sad in about a quarter of an hour.
+    public static let annoyanceDecay = 240.0
+    /// Food or drink takes this much annoyance away.
+    public static let treatCalms = 25.0
+    /// Left alone this long (seconds, with the game open), it starts doing its own things.
+    public static let soloAfterIdle: TimeInterval = 20
     public static let tickleFun = 4.0
     public static let tickleLove = 1.0
     /// Sweets put a smile on its face for this long.

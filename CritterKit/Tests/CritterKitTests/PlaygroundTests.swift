@@ -109,3 +109,18 @@ final class PlaygroundTests: XCTestCase {
         XCTAssertEqual(playground.bubbles.count, 8)
     }
 }
+
+final class SelfFetchTests: XCTestCase {
+    func testTheCritterTossesTheBallAndFetchesItItself() {
+        let config = Playground.Config(floorY: 700, leftX: 60, rightX: 1134, homeX: 600, ceilingY: 150)
+        var ground = Playground(config: config, critterX: 600)
+        XCTAssertTrue(ground.tossBallItself(towardRight: true))
+        XCTAssertFalse(ground.tossBallItself(towardRight: true), "one ball at a time")
+        var delivered = false
+        for _ in 0..<(60 * 10) where !delivered {
+            delivered = ground.step(1 / 60).contains(.deliveredBall)
+        }
+        XCTAssertTrue(delivered)
+        XCTAssertEqual(ground.fetches, 1)
+    }
+}

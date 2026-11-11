@@ -35,3 +35,17 @@
 - [x] Living critter: wanders, walks to bowl/bed by need, faces direction, walk bob, eyes follow touch
 - [x] Petting/tickle reactions, haptics, drag food to the mouth (mouth opens when food is near)
 - [x] UI tests that play the game in a landscape simulator and save screenshots
+
+# Temper and a life of its own
+- [x] Temper ladder in CritterKit: grumpy → upset (sad) → furious, from sustained bothering while it wants space; rate-limited, decays, food calms + tests
+- [x] Furious art: red eyes, angry brows, pointy teeth, shaking, steam
+- [x] Reactions in Home: escalating lines, sulking, raging stomps
+- [x] SoloLife in CritterKit: picks an activity after ~20 s alone (read in window / stargaze at night, ball alone, dance, fish) + tests
+- [x] Playground: critter tosses the ball itself + test
+- [x] Home: perch on the window sill with a book, solo ball, dance, fish; touching interrupts; grabbing the ball joins in
+- [x] Snapshots/UI check, swift test, app build, commit, deploy
+
+## Review
+- Temper: 7 TemperTests + a real-time over-petting test. A UI play-through pesters it from grumpy to sad to furious in about 3 minutes of steady pestering.
+- Fixed along the way: love decays slightly between strokes, so it was never exactly 100 and over-petting never made it grumpy on a device. "Full" now starts at 99.
+- Solo life: 7 SoloLifeTests and a self-fetch test. A UI test waits until it starts something on its own, then checks that a touch interrupts it. Screenshots show the ball game and reading in the window.

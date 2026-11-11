@@ -213,6 +213,7 @@ struct AboutPetView: View {
         switch pet.expression(at: now) {
         case .excited: "\(pet.pronounName) har saknat dig och vill ha massor av gos!"
         case .ignoring: "\(pet.pronounName) har fått nog med gos för stunden."
+        case .furious: "\(pet.pronounName) är jättearg! Lämna sötisen ifred en stund, eller bjud på något gott."
         case .asleep: "Sch… sov så gott."
         case .sick: "\(pet.pronounName) är sjuk. Medicin hjälper, och ett rent rum också."
         case .hungry: "\(pet.pronounName) är hungrig eller törstig."

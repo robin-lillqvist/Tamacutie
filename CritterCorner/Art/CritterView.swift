@@ -85,7 +85,10 @@ struct LiveCritterView: View {
             case .happy: -abs(sin(t * 2.5)) * 4
             default: 0
             }
-            let step = walking ? -abs(sin(t * 11)) * 12 : 0
+            let furious = expression == .furious
+            let rage = furious ? sin(t * 47) * 2.5 : 0
+            let stomp = furious && !walking ? -abs(sin(t * 7)) * 7 : 0
+            let step = walking ? -abs(sin(t * (furious ? 16 : 11))) * 12 : 0
             let waddle = walking ? sin(t * 11) * 4 : 0
             let giggle = wiggle ? sin(t * 40) * 7 : 0
             let sway: Double = (expression == .ignoring ? -6 : sin(t * 1.3 + phase) * 1.5) + waddle + giggle + lean
@@ -95,14 +98,36 @@ struct LiveCritterView: View {
                 .opacity(dying ? 0.9 : 1)
                 .scaleEffect(x: (2 - breath) * (facingRight ? 1 : -1), y: breath * (dying ? 0.95 : 1), anchor: .bottom)
                 .rotationEffect(.degrees(sway + (dying ? 4 : 0)), anchor: .bottom)
-                .offset(x: shiver)
+                .offset(x: shiver + rage)
                 .overlay {
+                    if furious { Steam(time: t) }
                     if shine > 0.02 { Twinkles(time: t, amount: shine, girth: weight) }
                     if condition == .filthy { Flies(time: t) }
                     if condition == .filthy || condition == .dirty { Stink(time: t, strong: condition == .filthy) }
                 }
-                .offset(y: bounce + step)
+                .offset(y: bounce + step + stomp)
         }
+    }
+}
+
+/// Angry puffs of steam shooting out of a furious critter's head.
+private struct Steam: View {
+    let time: Double
+
+    var body: some View {
+        Canvas { c, size in
+            let s = size.width / 200
+            for side in [-1.0, 1.0] {
+                for k in 0..<3 {
+                    let life = (time * 1.6 + Double(k) / 3 + (side > 0 ? 0.5 : 0)).truncatingRemainder(dividingBy: 1)
+                    let x = 100 + side * (52 + life * 34)
+                    let y = 52 - life * 46
+                    let r = (7 + life * 12) * s
+                    c.fill(Path(ellipseIn: CGRect(x: x * s - r, y: y * s - r, width: r * 2, height: r * 2)), with: .color(.white.opacity(0.85 * (1 - life))))
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -577,8 +602,9 @@ private struct CritterPainter {
 
     // MARK: Face
 
+    /// A furious critter glares: it never blinks.
     private var eyesClosed: Bool {
-        blinking || [.asleep, .dead, .ignoring].contains(expression)
+        (blinking && expression != .furious) || [.asleep, .dead, .ignoring].contains(expression)
     }
 
     private var eyeCenters: [CGFloat] {
@@ -591,6 +617,7 @@ private struct CritterPainter {
         let lookShift: CGFloat = expression == .ignoring ? -12 : 0
         let lx = CGFloat(max(-1, min(1, look.dx))) * 5
         let ly = CGFloat(max(-1, min(1, look.dy))) * 4
+        if expression == .furious { return furiousEyes() }
         for (index, cx) in eyeCenters.map({ $0 + lookShift }).enumerated() {
             let cyclops = genome.eyes == .cyclops
             if eyesClosed {
@@ -651,6 +678,37 @@ private struct CritterPainter {
         }
     }
 
+    /// Glowing red eyes under heavy brows that slope down to the middle.
+    private func furiousEyes() {
+        let red = Color(hex: 0xE5383B)
+        let cyclops = genome.eyes == .cyclops
+        let scale: CGFloat = cyclops ? 1.5 : (style == .chibi ? 0.75 : 1)
+        for (index, cx) in eyeCenters.enumerated() {
+            let y: CGFloat = style == .chibi ? 108 : 110
+            if style == .doodle {
+                let r = cyclops ? CGFloat(22) : (index == 0 ? googlyLeft : googlyRight)
+                ellipse(cx, y - 4, r, r, .white)
+                context.stroke(oval(cx, y - 4, r, r), with: .color(ink), lineWidth: 2.6)
+                ellipse(cx, y - 2, r * 0.55, r * 0.55, red)
+            } else {
+                ellipse(cx, y, 13 * scale, 11 * scale, red, opacity: 0.35)
+                ellipse(cx, y, 10.5 * scale, 9.5 * scale, red)
+            }
+            ellipse(cx, y + 1, 3.5 * scale, 5 * scale, ink)
+            ellipse(cx + 3 * scale, y - 4 * scale, 2.6 * scale, 2.6 * scale, .white)
+
+            let sides: [CGFloat] = cyclops ? [-1, 1] : [index == 0 ? 1 : -1]
+            for side in sides {
+                let inner = cyclops ? cx : cx + side * 9 * scale
+                let outer = cyclops ? cx - side * 20 * scale : cx - side * 14 * scale
+                var brow = Path()
+                brow.move(to: CGPoint(x: outer, y: y - 21 * scale))
+                brow.addLine(to: CGPoint(x: inner, y: y - 11 * scale))
+                stroke(brow, ink, width: 5)
+            }
+        }
+    }
+
     private func closedEye(_ cx: CGFloat, wide: CGFloat) {
         if style == .plush {
             var cross = Path()
@@ -674,7 +732,7 @@ private struct CritterPainter {
     private func cheeks() {
         let shift: CGFloat = expression == .ignoring ? -12 : 0
         let sick = expression == .sick
-        let color: Color = sick ? Color(hex: 0x9AD39A) : (style == .doodle ? .coral : .blush)
+        let color: Color = sick ? Color(hex: 0x9AD39A) : (expression == .furious ? Color(hex: 0xE5383B) : (style == .doodle ? .coral : .blush))
         let x = 38 * girth
         switch style {
         case .vinyl:
@@ -748,11 +806,39 @@ private struct CritterPainter {
             draw(path)
         case .asleep, .sleepy:
             ellipse(100, 133 + dy, 4, 3, stitched ? Color(hex: 0xC2566E) : .ink)
+        case .furious:
+            fangs(dy: dy)
         case .ignoring:
             path.move(to: CGPoint(x: 80, y: 131))
             path.addQuadCurve(to: CGPoint(x: 94, y: 131), control: CGPoint(x: 87, y: 127))
             draw(path)
         }
+    }
+
+    /// A wide snarl full of pointy teeth.
+    private func fangs(dy: CGFloat) {
+        var snarl = Path()
+        snarl.move(to: CGPoint(x: 79, y: 126 + dy))
+        snarl.addLine(to: CGPoint(x: 121, y: 126 + dy))
+        snarl.addQuadCurve(to: CGPoint(x: 79, y: 126 + dy), control: CGPoint(x: 100, y: 164 + dy))
+        snarl.closeSubpath()
+        fill(snarl, ink)
+        ellipse(100, 143 + dy, 9, 4, Color(hex: 0xC2566E))
+        var teeth = Path()
+        for index in 0..<4 {
+            let left = 80 + CGFloat(index) * 10
+            teeth.move(to: CGPoint(x: left, y: 126 + dy))
+            teeth.addLine(to: CGPoint(x: left + 10, y: 126 + dy))
+            teeth.addLine(to: CGPoint(x: left + 5, y: 139 + dy))
+            teeth.closeSubpath()
+        }
+        for x in [89.0, 111.0] {
+            teeth.move(to: CGPoint(x: x - 5, y: 150 + dy))
+            teeth.addLine(to: CGPoint(x: x + 5, y: 150 + dy))
+            teeth.addLine(to: CGPoint(x: x, y: 139 + dy))
+            teeth.closeSubpath()
+        }
+        fill(teeth, .white)
     }
 
     // MARK: Primitives

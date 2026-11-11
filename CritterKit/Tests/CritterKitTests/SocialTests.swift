@@ -62,6 +62,20 @@ final class SocialTests: XCTestCase {
         XCTAssertNotEqual(pet.stroke(at: afterCooldown), .ignored)
     }
 
+    func testOverPettingInRealTimeStillMakesItGrumpy() {
+        var pet = makePet()
+        var now = t0
+        var results: [StrokeResult] = []
+        for _ in 0..<30 {
+            now += 1.5
+            pet.advance(to: now)
+            results.append(pet.stroke(at: now))
+            if results.last == .grumpy { break }
+        }
+        XCTAssertEqual(results.filter { $0 == .nowFull }.count, 1, "love trickling away between strokes isn't 'full again'")
+        XCTAssertEqual(results.last, .grumpy)
+    }
+
     func testAPauseForgivesOverPetting() {
         var pet = makePet()
         pet.needs.love = 100
