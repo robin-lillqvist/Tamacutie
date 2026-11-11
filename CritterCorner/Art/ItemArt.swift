@@ -53,6 +53,34 @@ struct ItemArt: View {
                 c.dot(44, 48, 3, .poop)
                 c.dot(56, 58, 3, .poop)
                 c.dot(52, 42, 2.5, .coral)
+            case "lollipop":
+                c.box(47, 52, 6, 42, radius: 3, .white)
+                c.dot(50, 36, 30, .coral)
+                c.dot(50, 36, 23, .butter)
+                c.dot(50, 36, 16, .mint)
+                c.dot(50, 36, 9, .sky)
+                c.dot(50, 36, 4, .lavender)
+                c.dot(40, 24, 5, .white.opacity(0.7))
+            case "icecream":
+                c.shape(Color(hex: 0xE8B27A)) { $0.addLines([CGPoint(x: 30, y: 50), CGPoint(x: 70, y: 50), CGPoint(x: 50, y: 94)]) }
+                c.line(Color(hex: 0xC98E55), width: 2.5) { p in
+                    p.move(to: CGPoint(x: 36, y: 56)); p.addLine(to: CGPoint(x: 58, y: 78))
+                    p.move(to: CGPoint(x: 64, y: 56)); p.addLine(to: CGPoint(x: 42, y: 78))
+                }
+                c.dot(40, 44, 14, .pinkLight)
+                c.dot(60, 44, 14, Color(hex: 0xFFE3A3))
+                c.dot(50, 28, 16, .mintLight)
+                c.dot(50, 10, 6, .coralDeep)
+                c.dot(44, 24, 4, .white.opacity(0.8))
+            case "soda":
+                c.box(30, 24, 40, 68, radius: 12, .pink)
+                c.box(30, 24, 40, 18, radius: 12, .pinkLight)
+                c.box(30, 34, 40, 8, .pinkLight)
+                c.line(.white, width: 5) { p in p.move(to: CGPoint(x: 58, y: 30)); p.addLine(to: CGPoint(x: 70, y: 4)) }
+                c.dot(42, 60, 4, .white.opacity(0.8))
+                c.dot(54, 72, 3, .white.opacity(0.8))
+                c.dot(46, 80, 2.5, .white.opacity(0.8))
+                c.star(50, 56, 9, .butter)
             case "water":
                 c.box(36, 10, 28, 12, radius: 4, .skyDeep)
                 c.box(30, 22, 40, 68, radius: 12, Color(hex: 0xD6ECFF))

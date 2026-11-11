@@ -104,7 +104,16 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
     public private(set) var poops: [Poop] = []
     public private(set) var pendingPoops: [Date] = []
     public private(set) var lastInteraction: Date
+    /// While set and in the future, it wants to be left alone (no cuddles).
     public private(set) var cooldownUntil: Date?
+    /// Food or drink during the cooldown takes the grumpiness away; it still wants space.
+    public private(set) var soothed: Bool?
+    public private(set) var lastStroke: Date?
+    public private(set) var lastTickle: Date?
+    /// Strokes given after love was already full.
+    public private(set) var overPets: Int?
+    /// After sweets it beams for a while.
+    public private(set) var sweetJoyUntil: Date?
     public private(set) var missedYouUntil: Date?
     public private(set) var deathDate: Date?
     public private(set) var causeOfDeath: CauseOfDeath?
@@ -163,9 +172,20 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
         return min(timeLeft, clean)
     }
 
+    /// Wants to be left alone: cuddles are turned down.
     public func isIgnoring(at now: Date) -> Bool {
         guard let cooldownUntil else { return false }
         return now < cooldownUntil
+    }
+
+    /// Wants to be alone and is cross about it. Food or drink fixes the cross part.
+    public func isGrumpy(at now: Date) -> Bool {
+        isIgnoring(at: now) && soothed != true
+    }
+
+    public func isBeaming(at now: Date) -> Bool {
+        guard let sweetJoyUntil else { return false }
+        return now < sweetJoyUntil
     }
 
     public func missesYou(at now: Date) -> Bool {
@@ -177,8 +197,9 @@ public struct Pet: Codable, Equatable, Identifiable, Sendable {
         if !isAlive { return .dead }
         if isAsleep { return .asleep }
         if isSick { return .sick }
-        if isIgnoring(at: now) { return .ignoring }
+        if isGrumpy(at: now) { return .ignoring }
         if missesYou(at: now) { return .excited }
+        if isBeaming(at: now) { return .happy }
         if weightStage.isDangerous { return .sad }
         if needs.hunger < 20 || needs.thirst < 20 { return .hungry }
         if needs.energy < 20 { return .sleepy }
@@ -293,7 +314,22 @@ public enum FeedResult: Equatable, Sendable {
 
 public enum StrokeResult: Equatable, Sendable {
     case loved(gain: Double)
+    /// Too soon after the last stroke to count. Nothing changes.
+    case tooSoon
+    /// Love just became full. Happy, not grumpy.
     case nowFull
+    /// Love is full and you keep going: "that's enough soon".
+    case enough
+    /// You kept going after the warning: now it wants to be left alone.
+    case grumpy
+    case ignored
+    case asleep
+    case dead
+}
+
+public enum TickleResult: Equatable, Sendable {
+    case giggled
+    case tooSoon
     case ignored
     case asleep
     case dead
@@ -317,7 +353,10 @@ extension Pet {
         weight += overflow * Rules.overflowToWeight + food.fattening
         needs.fun += food.fun
         needs.thirst += food.thirst
+        needs.love += food.love
         needs.clamp()
+        if food.isSweet { sweetJoyUntil = now.addingTimeInterval(Rules.sweetJoyDuration) }
+        soothe(at: now)
         if food.hunger > 0 {
             pendingPoops.append(now.addingTimeInterval(Rules.digestionDelay))
             pendingPoops.sort()
@@ -330,6 +369,7 @@ extension Pet {
     public mutating func drink(_ amount: Double, at now: Date) -> Bool {
         guard isAlive, !isAsleep else { return false }
         needs.thirst = (needs.thirst + amount).clamped()
+        soothe(at: now)
         touch(now)
         return true
     }
@@ -338,15 +378,44 @@ extension Pet {
         guard isAlive else { return .dead }
         guard !isAsleep else { return .asleep }
         if isIgnoring(at: now) { return .ignored }
-        let gain = Rules.strokeLove * (missesYou(at: now) ? 2 : 1)
-        needs.love = (needs.love + gain).clamped()
+        if let lastStroke, now.timeIntervalSince(lastStroke) < Rules.strokeInterval { return .tooSoon }
+        if let lastStroke, now.timeIntervalSince(lastStroke) > Rules.overPetForgiveAfter { overPets = nil }
+        lastStroke = now
         touch(now)
         if needs.love >= 100 {
-            cooldownUntil = now.addingTimeInterval(Rules.loveFullCooldown)
-            missedYouUntil = nil
-            return .nowFull
+            let count = (overPets ?? 0) + 1
+            overPets = count
+            if count >= Rules.overPetLimit {
+                cooldownUntil = now.addingTimeInterval(Rules.loveFullCooldown)
+                soothed = false
+                overPets = nil
+                missedYouUntil = nil
+                return .grumpy
+            }
+            return count >= Rules.overPetWarning ? .enough : .loved(gain: 0)
         }
-        return .loved(gain: gain)
+        let gain = Rules.strokeLove * (missesYou(at: now) ? 2 : 1)
+        needs.love = (needs.love + gain).clamped()
+        overPets = nil
+        return needs.love >= 100 ? .nowFull : .loved(gain: gain)
+    }
+
+    public mutating func tickle(at now: Date) -> TickleResult {
+        guard isAlive else { return .dead }
+        guard !isAsleep else { return .asleep }
+        if isIgnoring(at: now) { return .ignored }
+        if let lastTickle, now.timeIntervalSince(lastTickle) < Rules.tickleInterval { return .tooSoon }
+        lastTickle = now
+        needs.fun += Rules.tickleFun
+        needs.love += Rules.tickleLove
+        needs.clamp()
+        touch(now)
+        return .giggled
+    }
+
+    /// Food and drink take the grumpiness away, but it still wants to be left alone for now.
+    private mutating func soothe(at now: Date) {
+        if isIgnoring(at: now) { soothed = true }
     }
 
     public mutating func play(at now: Date, fun: Double = 12, energy: Double = 4) -> Bool {

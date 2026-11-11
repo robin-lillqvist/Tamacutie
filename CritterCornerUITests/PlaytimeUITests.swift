@@ -73,4 +73,33 @@ final class PlaytimeUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.3)
         snap("10-fed")
     }
+
+    private var critter: XCUIElement { app.descendants(matching: .any)["critter"].firstMatch }
+
+    private func bubbles(_ lines: [String]) -> Int {
+        lines.reduce(0) { $0 + app.staticTexts.matching(identifier: $1).count + app.staticTexts.matching(NSPredicate(format: "label == %@", $1)).count }
+    }
+
+    func testDoubleTapTickles() {
+        XCTAssertTrue(critter.waitForExistence(timeout: 5))
+        // Touching it makes it stop wandering, so the double tap lands where it stands.
+        critter.press(forDuration: 0.3)
+        Thread.sleep(forTimeInterval: 1.0)
+        critter.doubleTap()
+        let giggles = ["Hihihi! Sluta!", "Kittlas inte!!", "Ha ha ha!", "Hihi, det kittlas!"]
+        let giggle = app.staticTexts.matching(NSPredicate(format: "label IN %@", giggles)).firstMatch
+        XCTAssertTrue(giggle.waitForExistence(timeout: 2), "double tap should tickle")
+        snap("04-tickled")
+    }
+
+    func testSpamTappingShowsOneCalmBubble() {
+        XCTAssertTrue(critter.waitForExistence(timeout: 5))
+        for _ in 0..<12 {
+            critter.tap()
+        }
+        let speech = app.staticTexts.matching(NSPredicate(format: "label IN %@", ["Hej!", "Bopp!", "Hihi!", "Läget?", "Hej kompis!", "Hihihi! Sluta!", "Kittlas inte!!", "Ha ha ha!", "Hihi, det kittlas!"]))
+        XCTAssertLessThanOrEqual(speech.count, 1, "one bubble at a time")
+        XCTAssertFalse(app.staticTexts["Hmpf! Nu vill jag vara ifred!"].exists, "tapping a lot must not make it grumpy")
+        snap("05-after-spam")
+    }
 }

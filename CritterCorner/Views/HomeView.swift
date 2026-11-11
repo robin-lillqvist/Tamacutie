@@ -24,6 +24,9 @@ struct HomeView: View {
     // Interaction state.
     @State private var bubble: String?
     @State private var bubbleToken = UUID()
+    @State private var bubbleShownAt = Date.distantPast
+    @State private var scribbleTurns: [Date] = []
+    @State private var scribbleDirection: CGFloat = 0
     @State private var hearts: [HeartBurst] = []
     @State private var floating: [FloatingText] = []
     @State private var sparkles: [FloatingText] = []
@@ -166,7 +169,7 @@ struct HomeView: View {
         if [.asleep, .dead, .sick].contains(base) { return base }
         if let moodOverride, moodOverride.until > Date() { return moodOverride.mood }
         if draggedFood != nil, hypot(foodPoint.x - center.x, foodPoint.y - center.y) < 320 { return .hungry }
-        if (petting || chomping) && base != .ignoring { return .happy }
+        if (chomping || (petting && !pet.isIgnoring(at: store.now))) && base != .ignoring { return .happy }
         if let playground, playground.task == .carryingBall || playground.isWalking { return .excited }
         return base
     }
@@ -182,7 +185,7 @@ struct HomeView: View {
             look: lookVector(from: center),
             lean: lean,
             wiggle: wiggle,
-            blissful: (petting && pet.expression(at: store.now) != .ignoring) || chomping || wiggle,
+            blissful: (petting && !pet.isIgnoring(at: store.now)) || chomping || wiggle,
             shine: pet.shine(at: store.now),
             condition: pet.condition(at: store.now),
             coat: .everyday(for: pet),
@@ -193,12 +196,14 @@ struct HomeView: View {
         .offset(y: hop ? -46 : 0)
         .contentShape(Circle().inset(by: 30))
         .gesture(petting(center: center))
+        .simultaneousGesture(TapGesture(count: 2).onEnded { tickle() })
         .position(center)
         .accessibilityElement()
         .accessibilityIdentifier("critter")
-        .accessibilityLabel("\(pet.name). Stryk för att klappa, tryck snabbt för att kittla.")
+        .accessibilityLabel("\(pet.name). Stryk för att klappa. Dubbeltryck eller gnid snabbt fram och tillbaka för att kittla.")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { stroke(at: center) }
+        .accessibilityAction(named: "Kittla") { tickle() }
     }
 
     private func lookVector(from center: CGPoint) -> CGVector {
@@ -534,6 +539,7 @@ struct HomeView: View {
                 withAnimation(.easeOut(duration: 0.2)) { lean = Double(max(-1, min(1, (point.x - center.x) / 150))) * 6 }
                 if let last = lastDragPoint {
                     strokeDistance += hypot(point.x - last.x, point.y - last.y)
+                    noteScribble(dx: point.x - last.x)
                 }
                 lastDragPoint = point
                 if strokeDistance > 160 {
@@ -557,36 +563,68 @@ struct HomeView: View {
         guard let pet = store.pet else { return }
         let result = store.perform { state, now in state.pet?.stroke(at: now) } ?? .dead
         switch result {
-        case .loved(let gain):
+        case .loved(let gain) where gain > 0:
             Haptics.soft()
             SoundFX.play(.purr)
             addHearts(at: point, count: gain > Rules.strokeLove ? 3 : 1)
-            say(gain > Rules.strokeLove ? "Jag har saknat dig!! +\(Int(gain)) kärlek" : ["Purrrr…", "Mmm, skönt…", "Mer, tack!", "Så mysigt…"].randomElement()! + " +\(Int(gain)) kärlek")
+            say(gain > Rules.strokeLove ? "Jag har saknat dig!! +\(Int(gain)) kärlek" : ["Purrrr…", "Mmm, skönt…", "Mer, tack!", "Så mysigt…"].randomElement()! + " +\(Int(gain)) kärlek", chatty: true)
+        case .loved:
+            Haptics.soft()
+            addHearts(at: point, count: 1)
+            say(["Mmm…", "Purr…"].randomElement()!, chatty: true)
+        case .tooSoon:
+            break
         case .nowFull:
             Haptics.success()
+            SoundFX.play(.purr)
             addHearts(at: point, count: 4)
-            say("Okej, nu räcker det med gos!")
+            say("Mmm, nu är jag full av kärlek!")
+        case .enough:
+            Haptics.soft()
+            say("Nu räcker det snart med gos…")
+        case .grumpy:
+            Haptics.thump()
+            say("Hmpf! Nu vill jag vara ifred!")
             petting = false
             Task {
                 try? await Task.sleep(for: .seconds(1))
                 await walk(to: critterX < 640 ? 980 : 420)
             }
         case .ignored:
-            say(["Hmpf. Sen.", "Inte nu…", "Jag vill vara ifred!"].randomElement()!)
-            facingRight.toggle()
+            if pet.isGrumpy(at: store.now) {
+                say(["Hmpf. Sen.", "Inte nu…", "Jag vill vara ifred!"].randomElement()!, chatty: true)
+                facingRight.toggle()
+            } else {
+                say("Tack, men jag vill vara ifred en liten stund.", chatty: true)
+            }
         case .asleep:
-            say("Zzz… (\(pet.pronounName) sover)")
+            say("Zzz… (\(pet.pronounName) sover)", chatty: true)
         case .dead:
             break
+        }
+    }
+
+    /// A quick back-and-forth scribble on the sötis is tickling.
+    private func noteScribble(dx: CGFloat) {
+        guard abs(dx) > 2 else { return }
+        let direction: CGFloat = dx > 0 ? 1 : -1
+        if direction != scribbleDirection {
+            scribbleDirection = direction
+            let now = Date()
+            scribbleTurns = scribbleTurns.filter { now.timeIntervalSince($0) < 0.8 } + [now]
+            if scribbleTurns.count >= 4 {
+                scribbleTurns = []
+                tickle()
+            }
         }
     }
 
     private func poke() {
         guard let pet = store.pet, !pet.isAsleep else { return }
         let now = Date()
-        tickleTaps = tickleTaps.filter { now.timeIntervalSince($0) < 1.2 } + [now]
+        tickleTaps = tickleTaps.filter { now.timeIntervalSince($0) < 0.6 } + [now]
         Haptics.tap()
-        if tickleTaps.count >= 3 {
+        if tickleTaps.count >= 2 {
             tickleTaps = []
             tickle()
             return
@@ -597,23 +635,33 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(220))
             withAnimation(.spring(duration: 0.3, bounce: 0.5)) { hop = false }
         }
-        if pet.isIgnoring(at: store.now) {
-            say("Hmpf.")
+        if pet.isGrumpy(at: store.now) {
+            say("Hmpf.", chatty: true)
         } else {
-            say(["Hej!", "Bopp!", "Hihi!", "Läget?", "Hej kompis!"].randomElement()!)
+            say(["Hej!", "Bopp!", "Hihi!", "Läget?", "Hej kompis!"].randomElement()!, chatty: true)
         }
     }
 
     private func tickle() {
-        guard store.pet?.isIgnoring(at: store.now) == false else { return say("Inte nu!") }
-        wiggle = true
-        SoundFX.play(.giggle)
-        moodOverride = (.excited, Date().addingTimeInterval(1.4))
-        store.perform { state, now in _ = state.pet?.play(at: now, fun: 3, energy: 0) }
-        say(["Hihihi! Sluta!", "Kittlas inte!!", "Ha ha ha!"].randomElement()!)
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            wiggle = false
+        guard let pet = store.pet else { return }
+        let result = store.perform { state, now in state.pet?.tickle(at: now) } ?? .dead
+        switch result {
+        case .giggled:
+            wiggle = true
+            SoundFX.play(.giggle)
+            Haptics.soft()
+            moodOverride = (.excited, Date().addingTimeInterval(1.4))
+            say(["Hihihi! Sluta!", "Kittlas inte!!", "Ha ha ha!", "Hihi, det kittlas!"].randomElement()!)
+            Task {
+                try? await Task.sleep(for: .seconds(1.2))
+                wiggle = false
+            }
+        case .tooSoon:
+            break
+        case .ignored:
+            say(pet.isGrumpy(at: store.now) ? "Inte nu!" : "Jag vill vara ifred en liten stund.", chatty: true)
+        case .asleep, .dead:
+            break
         }
     }
 
@@ -640,6 +688,8 @@ struct HomeView: View {
     private func feed(_ itemID: String) {
         guard let pet = store.pet else { return }
         guard !pet.isAsleep else { return say("Zzz… (för sömnig för att äta)") }
+        let wasGrumpy = pet.isGrumpy(at: store.now)
+        let sweet = Catalog.item(itemID)?.foodEffect?.isSweet == true
         let result = store.perform { state, now in state.feed(itemID, now: now) }
         Haptics.thump()
         SoundFX.play(.chomp)
@@ -653,7 +703,15 @@ struct HomeView: View {
         }
         sparkles.append(FloatingText(text: "crumbs", point: CGPoint(x: critterX, y: lastLayout.petCenter.y + 20)))
         cleanUpLater()
+        if sweet, result != nil {
+            addHearts(at: CGPoint(x: critterX, y: lastLayout.petCenter.y - 60), count: 3)
+            moodOverride = (.excited, Date().addingTimeInterval(2))
+        }
+        if wasGrumpy, result != nil {
+            return say("Tack… Jag är inte sur längre. Men jag vill vara ifred en stund.")
+        }
         switch result {
+        case .yummy where sweet: say(["Godis! Jag är så glad!", "Mmm, så sött! Tack!"].randomElement()!)
         case .yummy: say(["Mums mums!", "Smaskens!", "Jättegott!"].randomElement()!)
         case .tooFull: say("Uff… jag är så mätt!")
         case .dead: break
@@ -671,10 +729,11 @@ struct HomeView: View {
         Task {
             busyUntil = Date().addingTimeInterval(6)
             await walk(to: 980)
+            let wasGrumpy = store.pet?.isGrumpy(at: store.now) == true
             if store.perform({ state, now in state.refillWater(now: now) }) {
                 Haptics.success()
                 SoundFX.play(.splash)
-                say("Slurp slurp! Ahh.")
+                say(wasGrumpy ? "Tack… Jag är inte sur längre. Men jag vill vara ifred en stund." : "Slurp slurp! Ahh.")
             }
         }
     }
@@ -727,7 +786,13 @@ struct HomeView: View {
 
     // MARK: Effects
 
-    private func say(_ text: String) {
+    /// Chatty lines (hellos, purrs) never cut off a bubble that only just appeared,
+    /// so tapping fast can't flood the screen. Everything else replaces the bubble.
+    private func say(_ text: String, chatty: Bool = false) {
+        let now = Date()
+        if chatty, bubble != nil, now.timeIntervalSince(bubbleShownAt) < 1.6 { return }
+        guard text != bubble else { return }
+        bubbleShownAt = now
         let token = UUID()
         bubbleToken = token
         withAnimation(.spring) { bubble = text }
@@ -738,7 +803,8 @@ struct HomeView: View {
     }
 
     private func addHearts(at point: CGPoint, count: Int) {
-        for index in 0..<count {
+        let room = max(0, 8 - hearts.count)
+        for index in 0..<min(count, room) {
             hearts.append(HeartBurst(point: CGPoint(x: point.x + CGFloat(index * 24 - 24), y: point.y), drift: CGFloat.random(in: -60...60)))
         }
         cleanUpLater()

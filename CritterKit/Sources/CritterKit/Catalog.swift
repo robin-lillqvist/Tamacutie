@@ -4,13 +4,18 @@ public struct FoodEffect: Equatable, Sendable {
     public let fun: Double
     /// Extra weight on top of any overflow; treats are fattening.
     public let fattening: Double
+    /// Sweets: love on top, and a happy face for a while.
+    public let love: Double
 
-    public init(hunger: Double, thirst: Double = 0, fun: Double = 0, fattening: Double = 0) {
+    public init(hunger: Double, thirst: Double = 0, fun: Double = 0, fattening: Double = 0, love: Double = 0) {
         self.hunger = hunger
         self.thirst = thirst
         self.fun = fun
         self.fattening = fattening
+        self.love = love
     }
+
+    public var isSweet: Bool { love > 0 }
 }
 
 public enum Aisle: String, CaseIterable, Sendable {
@@ -100,6 +105,9 @@ public enum Catalog {
         Item(id: "berries", name: "Månbär", price: 6, blurb: "+10 mat, +5 kul", kind: .food(FoodEffect(hunger: 10, thirst: 5, fun: 5)), packSize: 1),
         Item(id: "cupcake", name: "Muffin", price: 5, blurb: "+15 kul, gör en rund", kind: .food(FoodEffect(hunger: 10, fun: 15, fattening: 6)), packSize: 1),
         Item(id: "cookie", name: "Stjärnkaka", price: 3, blurb: "+8 kul, gör en rund", kind: .food(FoodEffect(hunger: 6, fun: 8, fattening: 3)), packSize: 1),
+        Item(id: "lollipop", name: "Regnbågsklubba", price: 45, blurb: "Gör en jätteglad!", kind: .food(FoodEffect(hunger: 4, fun: 30, fattening: 4, love: 15)), packSize: 1),
+        Item(id: "icecream", name: "Glasstrut", price: 40, blurb: "Gör en jätteglad!", kind: .food(FoodEffect(hunger: 8, thirst: 5, fun: 25, fattening: 5, love: 15)), packSize: 1),
+        Item(id: "soda", name: "Bubbelsaft", price: 35, blurb: "Söt dricka, gör en glad!", kind: .food(FoodEffect(hunger: 0, thirst: 35, fun: 20, fattening: 3, love: 10)), packSize: 1),
         Item(id: "water", name: "Källvatten", price: 5, blurb: "Fyller skålen", kind: .water(45), packSize: 5),
         Item(id: "shampoo", name: "Bubbelschampo", price: 12, blurb: "Extra glittrigt bad", kind: .shampoo, packSize: 3),
         Item(id: "medicine", name: "Må-bra-piller", price: 20, blurb: "Gör en frisk igen", kind: .medicine, packSize: 1),

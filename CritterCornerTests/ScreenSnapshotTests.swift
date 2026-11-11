@@ -169,5 +169,13 @@ final class ScreenSnapshotTests: XCTestCase {
         try render("dock-nudges", dock.padding(40).background(Color.cream), size: CGSize(width: 500, height: 220), minBytes: 8_000)
     }
 
+    /// The expensive sweets that make a sötis happy.
+    func testSweets() throws {
+        let row = HStack(spacing: 30) {
+            ForEach(["lollipop", "icecream", "soda", "cupcake"], id: \.self) { ItemArt(id: $0).frame(width: 120, height: 120) }
+        }
+        try render("sweets", row.padding(30).background(Color.cream), size: CGSize(width: 640, height: 200), minBytes: 8_000)
+    }
+
     func testHomePortraitMini() throws { try render("home-portrait-mini", HomeView(), size: CGSize(width: 744, height: 1133)) }
 }

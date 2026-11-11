@@ -25,19 +25,104 @@ final class SocialTests: XCTestCase {
         XCTAssertFalse(pet.missesYou(at: t0 + hours(3)))
     }
 
-    func testFullOfLoveThenIgnoresYou() {
+    /// Strokes one second apart, like a calm hand. Returns every result.
+    private func strokes(_ pet: inout Pet, count: Int, from start: Date) -> [StrokeResult] {
+        (0..<count).map { pet.stroke(at: start + Double($0)) }
+    }
+
+    func testRubbingFastIsNotSpam() {
         var pet = makePet()
-        var result = StrokeResult.ignored
-        for _ in 0..<20 {
-            result = pet.stroke(at: t0)
-            if result == .nowFull { break }
+        XCTAssertEqual(pet.stroke(at: t0), .loved(gain: Rules.strokeLove))
+        for step in 1...20 {
+            XCTAssertEqual(pet.stroke(at: t0 + Double(step) * 0.04), .tooSoon)
         }
-        XCTAssertEqual(result, .nowFull)
-        XCTAssertEqual(pet.stroke(at: t0 + 60), .ignored)
-        XCTAssertEqual(pet.expression(at: t0 + 60), .ignoring)
-        let afterCooldown = t0 + Rules.loveFullCooldown + 60
+        XCTAssertEqual(pet.needs.love, 60 + Rules.strokeLove, accuracy: 0.01, "fifty strokes a second count once")
+    }
+
+    func testFullOfLoveIsHappyNotGrumpy() {
+        var pet = makePet()
+        let results = strokes(&pet, count: 10, from: t0)
+        XCTAssertEqual(results.last, .nowFull)
+        XCTAssertFalse(pet.isIgnoring(at: t0 + 10))
+        XCTAssertNotEqual(pet.expression(at: t0 + 10), .ignoring)
+    }
+
+    func testOnlyTurnsGrumpyIfYouKeepGoingAfterTheWarning() {
+        var pet = makePet()
+        pet.needs.love = 100
+        let results = strokes(&pet, count: Rules.overPetLimit, from: t0)
+        XCTAssertEqual(results.first, .loved(gain: 0))
+        XCTAssertEqual(results[Rules.overPetWarning - 1], .enough, "warns before getting cross")
+        XCTAssertEqual(results.last, .grumpy)
+        let after = t0 + Double(Rules.overPetLimit)
+        XCTAssertEqual(pet.stroke(at: after + 5), .ignored)
+        XCTAssertEqual(pet.expression(at: after + 5), .ignoring)
+        let afterCooldown = after + Rules.loveFullCooldown + 60
         pet.advance(to: afterCooldown)
         XCTAssertNotEqual(pet.stroke(at: afterCooldown), .ignored)
+    }
+
+    func testAPauseForgivesOverPetting() {
+        var pet = makePet()
+        pet.needs.love = 100
+        _ = strokes(&pet, count: Rules.overPetLimit - 1, from: t0)
+        let later = t0 + Rules.overPetForgiveAfter + 30
+        XCTAssertEqual(pet.stroke(at: later), .loved(gain: 0), "starts counting again")
+        XCTAssertFalse(pet.isIgnoring(at: later))
+    }
+
+    func testFoodAndDrinkTakeTheGrumpinessAwayButItStillWantsSpace() {
+        var pet = makePet()
+        pet.needs.love = 100
+        _ = strokes(&pet, count: Rules.overPetLimit, from: t0)
+        let now = t0 + 30
+        XCTAssertTrue(pet.isGrumpy(at: now))
+        XCTAssertTrue(pet.drink(20, at: now))
+        XCTAssertFalse(pet.isGrumpy(at: now))
+        XCTAssertNotEqual(pet.expression(at: now), .ignoring)
+        XCTAssertTrue(pet.isIgnoring(at: now), "still wants to be alone for a while")
+        XCTAssertEqual(pet.stroke(at: now + 5), .ignored)
+
+        var hungry = makePet()
+        hungry.needs.love = 100
+        _ = strokes(&hungry, count: Rules.overPetLimit, from: t0)
+        _ = hungry.feed(FoodEffect(hunger: 10), at: now)
+        XCTAssertFalse(hungry.isGrumpy(at: now))
+    }
+
+    func testSweetsMakeItHappy() {
+        var pet = makePet()
+        pet.needs = Needs(hunger: 50, thirst: 50, energy: 50, hygiene: 50, fun: 30, love: 30)
+        XCTAssertNotEqual(pet.expression(at: t0), .happy)
+        let lollipop = Catalog.item("lollipop")!.foodEffect!
+        XCTAssertTrue(lollipop.isSweet)
+        _ = pet.feed(lollipop, at: t0)
+        XCTAssertEqual(pet.expression(at: t0 + 60), .happy)
+        XCTAssertGreaterThan(pet.needs.love, 30)
+        pet.advance(to: t0 + Rules.sweetJoyDuration + 60)
+        XCTAssertNotEqual(pet.expression(at: t0 + Rules.sweetJoyDuration + 60), .happy)
+    }
+
+    func testSweetsAreExpensive() {
+        let sweets = Catalog.items.filter { $0.foodEffect?.isSweet == true }
+        XCTAssertEqual(Set(sweets.map(\.id)), ["lollipop", "icecream", "soda"])
+        let priciestFood = Catalog.items.filter { $0.foodEffect.map { !$0.isSweet } ?? false }.map(\.price).max()!
+        for sweet in sweets {
+            XCTAssertGreaterThan(sweet.price, priciestFood * 3, sweet.name)
+            XCTAssertEqual(sweet.aisle, .treats)
+        }
+    }
+
+    func testTickling() {
+        var pet = makePet()
+        XCTAssertEqual(pet.tickle(at: t0), .giggled)
+        XCTAssertEqual(pet.needs.fun, 80 + Rules.tickleFun, accuracy: 0.01)
+        XCTAssertEqual(pet.tickle(at: t0 + 0.3), .tooSoon)
+        XCTAssertEqual(pet.tickle(at: t0 + Rules.tickleInterval), .giggled)
+        for second in 0..<60 { _ = pet.tickle(at: t0 + 10 + Double(second)) }
+        XCTAssertFalse(pet.isIgnoring(at: t0 + 80), "tickling never makes it grumpy")
+        XCTAssertTrue(pet.goToSleep(at: t0 + 100))
+        XCTAssertEqual(pet.tickle(at: t0 + 100), .asleep)
     }
 
     func testSleepingPetCannotBeStrokedOrFed() {

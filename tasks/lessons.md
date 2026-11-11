@@ -11,3 +11,6 @@
 ## Moving tap targets
 - A SwiftUI Button that moves every frame drops taps (the park frisbee scored 0 for a real child). Hit-test moving things in one fixed tap layer against a model, and be lenient about time: fingers lag behind eyes, so accept taps near where the object just was.
 - In UI tests, poll with short sleeps instead of XCTNSPredicateExpectation when timing matters; expectations only check about once a second.
+
+## Rate-limit interactions in the model
+- Gestures fire many times a second. Every care action a child can repeat (stroke, tickle) needs a minimum interval in CritterKit, and chatty speech must not replace a bubble that just appeared. Consequences like grumpiness need a visible warning first and sustained misuse, never a few fast taps.
