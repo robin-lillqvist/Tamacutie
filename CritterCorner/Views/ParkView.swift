@@ -1,7 +1,7 @@
 import CritterKit
 import SwiftUI
 
-private enum ParkGame {
+enum ParkGame {
     case fetch, dig
 }
 
@@ -16,7 +16,11 @@ struct ParkView: View {
     @Environment(Toaster.self) private var toaster
     @Environment(\.navigate) private var navigate
 
-    @State private var game = ParkGame.fetch
+    @State private var game: ParkGame
+
+    init(game: ParkGame = .fetch) {
+        _game = State(initialValue: game)
+    }
     @State private var fetch: ParkFetch?
     @State private var t = ParkView.clock()
     @State private var coinsFound = 0
@@ -75,12 +79,12 @@ struct ParkView: View {
 
             if game == .dig {
                 ForEach(mounds) { mound in
-                    Button { dig(mound) } label: {
+                    Button { dig(mound, width: size.width) } label: {
                         MoundView(reward: mound.reward)
                     }
                     .buttonStyle(SquishyButtonStyle())
                     .disabled(mound.reward != nil || digsLeft == 0)
-                    .position(x: mound.point.x, y: size.height * mound.point.y)
+                    .position(x: size.width * mound.point.x, y: size.height * mound.point.y)
                     .accessibilityLabel(mound.reward == nil ? "Jordhög. Tryck för att gräva." : "Uppgrävd")
                 }
             }
@@ -221,8 +225,13 @@ struct ParkView: View {
                 }
                 DockButton(title: "Gå hem", systemName: "house.fill", fill: Color(hex: 0xE3F7DC), width: 110) { goHome() }
             }
-            .position(x: size.width / 2, y: size.height - 72)
+            .position(x: Self.dockFrame(in: size).midX, y: Self.dockFrame(in: size).midY)
         }
+    }
+
+    /// Where the dock sits, so nothing you need to tap ends up behind it.
+    static func dockFrame(in size: CGSize) -> CGRect {
+        CGRect(x: size.width / 2 - 190, y: size.height - 132, width: 380, height: 120)
     }
 
     // MARK: Fetch
@@ -341,13 +350,19 @@ struct ParkView: View {
 
     // MARK: Dig
 
+    /// Mounds on open grass, as fractions of the screen, since the dock stays centred whatever the width.
+    /// Clear of the dock, the pond and the bench.
+    static let moundSpots: [CGPoint] = [
+        CGPoint(x: 0.28, y: 0.70), CGPoint(x: 0.22, y: 0.76), CGPoint(x: 0.59, y: 0.76),
+        CGPoint(x: 0.74, y: 0.78), CGPoint(x: 0.75, y: 0.91), CGPoint(x: 0.88, y: 0.86),
+    ]
+    static let moundSize = CGSize(width: 120, height: 60)
+
     private static func makeMounds() -> [Mound] {
-        [(330.0, 0.84), (470, 0.92), (640, 0.86), (790, 0.94), (900, 0.84), (240, 0.94)]
-            .enumerated()
-            .map { Mound(id: $0.offset, point: CGPoint(x: $0.element.0, y: $0.element.1)) }
+        moundSpots.enumerated().map { Mound(id: $0.offset, point: $0.element) }
     }
 
-    private func dig(_ mound: Mound) {
+    private func dig(_ mound: Mound, width: CGFloat) {
         guard digsLeft > 0, let index = mounds.firstIndex(where: { $0.id == mound.id }) else { return }
         digsLeft -= 1
         let reward = [0, 2, 3, 4, 5, 8].randomElement()!
@@ -355,7 +370,7 @@ struct ParkView: View {
         coinsFound += reward
         Haptics.tap()
         SoundFX.play(reward > 0 ? .coin : .boop)
-        fetch?.walkPet(to: mound.point.x)
+        fetch?.walkPet(to: width * mound.point.x)
         say(reward == 0 ? "Bara en blomma. Så fin!" : (reward >= 5 ? "En skatt!!" : "Åh, mynt!"))
     }
 
@@ -386,7 +401,7 @@ private struct MoundView: View {
                     c.dot(74, 36, 3, Color(hex: 0xE5B585))
                 }
             }
-            .frame(width: 120, height: 60)
+            .frame(width: ParkView.moundSize.width, height: ParkView.moundSize.height)
             if let reward {
                 if reward > 0 {
                     HStack(spacing: 2) {

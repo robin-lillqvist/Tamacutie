@@ -40,6 +40,19 @@ final class ScreenSnapshotTests: XCTestCase {
     func testMarket() throws { try render("market", MarketView()) }
     func testBath() throws { try render("bath", BathView()) }
     func testPark() throws { try render("park", ParkView()) }
+    func testParkDig() throws { try render("park-dig", ParkView(game: .dig)) }
+
+    /// Every dig mound is fully on screen and none hides behind the dock, on each iPad size.
+    func testDigMoundsAreNotBehindTheDock() {
+        for size in [CGSize(width: 1180, height: 820), CGSize(width: 1194, height: 834), CGSize(width: 1133, height: 744), CGSize(width: 1366, height: 1024)] {
+            let dock = ParkView.dockFrame(in: size)
+            for spot in ParkView.moundSpots {
+                let mound = CGRect(x: size.width * spot.x - ParkView.moundSize.width / 2, y: size.height * spot.y - ParkView.moundSize.height / 2, width: ParkView.moundSize.width, height: ParkView.moundSize.height)
+                XCTAssertFalse(mound.intersects(dock), "mound at \(spot) is behind the dock on \(size)")
+                XCTAssertTrue(CGRect(origin: .zero, size: size).contains(mound), "mound at \(spot) is off screen on \(size)")
+            }
+        }
+    }
     func testDecor() throws { try render("decor", DecorView()) }
     func testMemoriam() throws { try render("memoriam", MemoriamView()) }
     func testAdopt() throws { try render("adopt", AdoptView()) }
