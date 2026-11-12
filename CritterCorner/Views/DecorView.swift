@@ -12,38 +12,70 @@ struct DecorView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var draggingID: UUID?
 
+    @State private var camera = WorldCamera(worldWidth: DesignCanvas<EmptyView>.designWidth * Rules.roomScreens, viewportWidth: DesignCanvas<EmptyView>.designWidth)
+    @State private var cameraX: CGFloat = 0
+
     private let shadow = Color(hex: 0xD9CCFF)
+    private static let panelWidth: CGFloat = 374
 
     var body: some View {
         DesignCanvas(background: .lavenderLight) { size in
-            let layout = RoomLayout(size: size)
+            let layout = RoomLayout(size: CGSize(width: size.width * Rules.roomScreens, height: size.height))
+            let visible = CGSize(width: size.width - Self.panelWidth, height: size.height)
             ZStack(alignment: .topLeading) {
-                RoomBackdrop(size: size, time: store.now)
-                floorGrid(layout: layout)
+                ZStack(alignment: .topLeading) {
+                    RoomBackdrop(size: layout.size, time: store.now)
+                    floorGrid(layout: layout)
 
-                ForEach(store.state.room) { decor in
-                    decorItem(decor, layout: layout)
+                    // Empty room: swipe to look around, tap to put the selection down.
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(width: layout.size.width, height: layout.size.height)
+                        .gesture(roomSwipe)
+
+                    ForEach(store.state.room) { decor in
+                        decorItem(decor, layout: layout)
+                    }
+
+                    if let pet = store.pet {
+                        LiveCritterView(genome: pet.genome, expression: .happy, weight: pet.weight, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
+                            .frame(width: 150, height: 150)
+                            .position(x: 110, y: size.height - 120)
+                            .allowsHitTesting(false)
+                    }
+
+                    if let id = selectedDecor, let decor = store.state.room.first(where: { $0.id == id }) {
+                        selectionTools(for: decor, layout: layout, visibleWidth: visible.width)
+                    }
                 }
+                .frame(width: layout.size.width, height: layout.size.height, alignment: .topLeading)
+                .offset(x: -cameraX)
 
-                if let pet = store.pet {
-                    LiveCritterView(genome: pet.genome, expression: .happy, weight: pet.weight, shine: pet.shine(at: store.now), condition: pet.condition(at: store.now), coat: .everyday(for: pet), style: pet.appearance)
-                        .frame(width: 150, height: 150)
-                        .position(x: 110, y: size.height - 120)
-                        .allowsHitTesting(false)
+                EdgeArrows(cameraX: cameraX, worldWidth: layout.size.width, size: visible, y: layout.floorTop + 80) { right in
+                    camera.camera.page(right: right)
                 }
 
                 topBar
                     .position(x: 400, y: 24 + 32)
 
-                if let id = selectedDecor, let decor = store.state.room.first(where: { $0.id == id }) {
-                    selectionTools(for: decor, layout: layout)
-                }
-
                 shopPanel(height: size.height)
-                    .position(x: size.width - 187, y: size.height / 2)
+                    .position(x: size.width - Self.panelWidth / 2, y: size.height / 2)
             }
-            .frame(width: size.width, height: size.height)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipped()
+            .coordinateSpace(.named("screen"))
+            // The shop panel covers the right edge, so you can scroll a little further to see behind it.
+            .onAppear { camera.resize(worldWidth: layout.size.width, viewportWidth: visible.width) }
         }
+        .task { await camera.run(follow: { nil }, publish: { cameraX = $0 }) }
+    }
+
+    private var roomSwipe: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("screen"))
+            .onChanged { value in _ = camera.drag(translation: value.translation.width) }
+            .onEnded { value in
+                if !camera.endDrag(velocity: value.velocity.width) { selectedDecor = nil }
+            }
     }
 
     private var topBar: some View {
@@ -126,7 +158,7 @@ struct DecorView: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    private func selectionTools(for decor: PlacedDecor, layout: RoomLayout) -> some View {
+    private func selectionTools(for decor: PlacedDecor, layout: RoomLayout, visibleWidth: CGFloat) -> some View {
         let size = DecorArt.size(for: decor.itemID)
         let point = layout.point(for: decor)
         return HStack(spacing: 10) {
@@ -142,7 +174,7 @@ struct DecorView: View {
             }
             .buttonStyle(ChunkyButtonStyle())
         }
-        .position(x: min(max(point.x, 220), 600), y: max(130, point.y - size.height / 2 - 50))
+        .position(x: min(max(point.x, cameraX + 220), cameraX + visibleWidth - 180), y: max(130, point.y - size.height / 2 - 50))
     }
 
     private func shopPanel(height: CGFloat) -> some View {
@@ -220,7 +252,11 @@ struct DecorView: View {
 
     private func place(_ item: Item) {
         let y = item.decorLayer == .wall ? 0.3 : 0.78
-        let placed = store.perform { state, _ in state.place(item.id, x: .random(in: 0.2...0.55), y: y) }
+        // Somewhere in the part of the room you're looking at.
+        let world = camera.camera.worldWidth
+        let left = (camera.camera.x + camera.camera.viewportWidth * 0.25) / world
+        let right = (camera.camera.x + camera.camera.viewportWidth * 0.75) / world
+        let placed = store.perform { state, _ in state.place(item.id, x: .random(in: left...right), y: y) }
         selectedDecor = placed?.id
     }
 }

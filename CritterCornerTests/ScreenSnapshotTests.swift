@@ -37,6 +37,40 @@ final class ScreenSnapshotTests: XCTestCase {
     }
 
     func testHome() throws { try render("home", HomeView()) }
+
+    /// The sötis standing on the play-corner things, placed with the same maths the game uses:
+    /// on the cushion (resting and squashed), on the slide's platform and on its ramp.
+    func testPlayCornerContact() throws {
+        let size = CGSize(width: 1194 * Rules.roomScreens, height: 834)
+        let l = RoomLayout(size: size)
+        let rest = l.critterCenter(feetAt: l.cushion)
+        func critter(_ center: CGPoint) -> some View {
+            CritterView(genome: Genome(seed: 2024), expression: .happy).frame(width: 300, height: 300).position(center)
+        }
+        func scene(squashed: Bool) -> some View {
+            ZStack(alignment: .topLeading) {
+                RoomBackdrop(size: size)
+                BouncyCushion(squashed: squashed)
+                    .frame(width: 260, height: 110)
+                    .position(x: l.cushion.x, y: l.cushion.y - BouncyCushion.top + 55)
+                critter(squashed ? CGPoint(x: rest.x, y: rest.y + BouncyCushion.sink) : rest)
+                critter(l.critterCenter(feetAt: CGPoint(x: l.slideLadderX + 90, y: l.slideTop.y)))
+                critter(l.critterCenter(feetAt: CGPoint(x: l.slideBottom.x - 70, y: l.slideBottom.y - 30 - 18)))
+            }
+            .frame(width: size.width, height: size.height)
+            .offset(x: -1300)
+            .frame(width: 1088, height: size.height, alignment: .topLeading)
+            .clipped()
+        }
+        try render("contact-rest", scene(squashed: false), size: CGSize(width: 1088, height: 834))
+        try render("contact-squashed", scene(squashed: true), size: CGSize(width: 1088, height: 834))
+    }
+
+    /// The whole wide room at once: the old room on the left, the play corner on the right.
+    func testWholeRoom() throws {
+        let size = CGSize(width: 1180 * Rules.roomScreens, height: 820)
+        try render("room-whole", RoomBackdrop(size: size, time: Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: .now)!), size: size)
+    }
     func testMarket() throws { try render("market", MarketView()) }
     func testBath() throws { try render("bath", BathView()) }
     func testPark() throws { try render("park", ParkView()) }

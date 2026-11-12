@@ -52,11 +52,42 @@ struct HomeView: View {
     @State private var playground: Playground?
     @State private var grabbingBall = false
 
+    // The room is wider than the screen; this is the part you see.
+    @State private var camera = WorldCamera(worldWidth: DesignCanvas<EmptyView>.designWidth * Rules.roomScreens, viewportWidth: DesignCanvas<EmptyView>.designWidth)
+    @State private var cameraX: CGFloat = 0
+
+    // The play corner.
+    /// While set, the critter stands here (feet at y + 150): on the ladder, the slide or the cushion.
+    @State private var stagePoint: CGPoint?
+    @State private var stageBusy = false
+    @State private var cushionSquash = false
+    @State private var struckBar: Int?
+    @State private var notesPlayed = 0
+    /// The walk in progress, so the camera can follow where the critter is, not where it's headed.
+    @State private var stroll: (from: CGFloat, to: CGFloat, start: Date, duration: Double)?
+
     var body: some View {
         DesignCanvas(background: .pinkLight) { size in
             if let pet = store.pet {
-                room(pet: pet, layout: RoomLayout(size: size))
+                let world = RoomLayout(size: CGSize(width: size.width * Rules.roomScreens, height: size.height))
+                ZStack(alignment: .topLeading) {
+                    room(pet: pet, layout: world)
+                        .offset(x: -cameraX)
+                    hud(pet: pet, layout: world, screen: size)
+                    EdgeArrows(cameraX: cameraX, worldWidth: world.size.width, size: size, y: world.floorTop + 80) { right in
+                        camera.camera.page(right: right)
+                        lastTouch = Date()
+                    }
+                }
+                .frame(width: size.width, height: size.height, alignment: .topLeading)
+                .clipped()
+                .coordinateSpace(.named("screen"))
+                .onAppear { camera.resize(worldWidth: world.size.width, viewportWidth: size.width) }
+                .onChange(of: size) { _, _ in camera.resize(worldWidth: world.size.width, viewportWidth: size.width) }
             }
+        }
+        .task {
+            await camera.run(follow: { followTarget() }, publish: { cameraX = $0 })
         }
         .sheet(isPresented: $showAbout) {
             if let pet = store.pet { AboutPetView(pet: pet, now: store.now) }
@@ -99,6 +130,10 @@ struct HomeView: View {
                 .buttonStyle(SquishyButtonStyle())
                 .position(point)
                 .accessibilityLabel("Bajs. Tryck för att plocka upp det.")
+            }
+
+            if layout.hasPlayCorner {
+                playCorner(layout: layout)
             }
 
             if let playground {
@@ -157,13 +192,13 @@ struct HomeView: View {
             if let bubble {
                 let center = critterCenter(pet: pet, layout: layout)
                 let scale = critterScale(pet)
-                SpeechBubble(text: bubble, tailOnLeft: center.x < 820)
-                    .position(x: center.x < 820 ? center.x + 210 : center.x - 210, y: center.y + 150 - 320 * scale)
+                let onLeft = center.x - cameraX < 820
+                SpeechBubble(text: bubble, tailOnLeft: onLeft)
+                    .position(x: onLeft ? center.x + 210 : center.x - 210, y: center.y + 150 - 320 * scale)
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                     .allowsHitTesting(false)
             }
 
-            hud(pet: pet, layout: layout)
         }
         .frame(width: size.width, height: size.height)
         .coordinateSpace(.named("room"))
@@ -173,11 +208,12 @@ struct HomeView: View {
 
     private func critterCenter(pet: Pet, layout: RoomLayout) -> CGPoint {
         if pet.isAsleep { return CGPoint(x: RoomLayout.bedX, y: layout.floorTop - 40) }
+        if let stagePoint { return stagePoint }
         if let playground {
             return CGPoint(x: playground.critterX, y: layout.petCenter.y - playground.hop)
         }
         // The frame's bottom edge is its feet: up on the sill, the feet rest on the sill.
-        let seatY = layout.windowSillY - 150
+        let seatY = layout.critterCenter(feetAt: CGPoint(x: critterX, y: layout.windowSillY), scale: 0.55).y
         return CGPoint(x: critterX, y: layout.petCenter.y + (seatY - layout.petCenter.y) * perch)
     }
 
@@ -255,8 +291,7 @@ struct HomeView: View {
         return CGVector(dx: max(-1, min(1, (target.x - eye.x) / 260)), dy: max(-1, min(1, (target.y - eye.y) / 260)))
     }
 
-    private func hud(pet: Pet, layout: RoomLayout) -> some View {
-        let size = layout.size
+    private func hud(pet: Pet, layout: RoomLayout, screen size: CGSize) -> some View {
         return ZStack(alignment: .topLeading) {
             Button { showAbout = true } label: {
                 HStack(spacing: 14) {
@@ -278,17 +313,26 @@ struct HomeView: View {
             .buttonStyle(SquishyButtonStyle())
             .position(x: 24 + 160, y: 24 + 38)
 
-            NeedsPanel(pet: pet)
-                .frame(width: 236)
-                .position(x: 24 + 118, y: 116 + 200)
-
-            if pet.isSick {
-                Button("Ge medicin") { giveMedicine() }
-                    .buttonStyle(ChunkyButtonStyle(fill: .mint, shadow: .mintDeep))
-                    .position(x: 24 + 118, y: 116 + 440)
-            }
+            // Menus stay out of the sötis's way: a slim strip on the left, pills along the top,
+            // the fridge under the top bar and the dock at the bottom.
+            NeedsStrip(pet: pet)
+                .fixedSize()
+                .position(x: 24 + 38, y: 116 + NeedsStrip.height / 2)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("needs")
 
             HStack(spacing: 12) {
+                if pet.isSick {
+                    Button { giveMedicine() } label: {
+                        Label("Ge medicin", systemImage: "cross.case.fill")
+                            .font(.cute(20, .bold))
+                            .foregroundStyle(Color.ink)
+                            .padding(.horizontal, 18)
+                            .frame(height: 58)
+                            .card(fill: .mintLight, radius: 29)
+                    }
+                    .buttonStyle(SquishyButtonStyle())
+                }
                 if store.state.piggyBank >= 1 {
                     Button {
                         let amount = store.perform { state, _ in state.collectPiggyBank() }
@@ -318,13 +362,15 @@ struct HomeView: View {
                 FridgeTray(onFeed: { feed($0) }, onShop: { navigate(.market) }, onDrag: { id, point, ended in
                     dragFood(id, to: point, ended: ended, layout: layout)
                 })
-                .position(x: size.width / 2, y: size.height - 240)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("fridge-tray")
+                .position(x: size.width / 2, y: 104 + 84)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             if let toy, let playground {
                 PlayScore(toy: toy, fetches: playground.fetches, pops: playground.pops)
-                    .position(x: size.width - 24 - 120, y: 24 + 150)
+                    .position(x: size.width / 2 - 40, y: 24 + 32)
             }
 
             Group {
@@ -334,6 +380,8 @@ struct HomeView: View {
                     dock(pet: pet, layout: layout)
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("dock")
             .position(x: size.width / 2, y: size.height - 72)
         }
     }
@@ -412,7 +460,7 @@ struct HomeView: View {
             } else if Int.random(in: 0..<3) == 0 {
                 await lookAround()
             } else {
-                await walk(to: CGFloat.random(in: 420...860))
+                await walk(to: CGFloat.random(in: 420...(lastLayout.size.width - 300)))
                 if Int.random(in: 0..<4) == 0 {
                     say(["La la la~", "Hmm hmm~", "*sniff sniff*", "Vilken fin dag!", "♪ ♫"].randomElement()!)
                 }
@@ -427,7 +475,7 @@ struct HomeView: View {
         say(["GRRRR!", "ARGH!!", "Jag är SÅ arg!", "Lämna mig ifred!!"].randomElement()!)
         Haptics.thump()
         for _ in 0..<2 {
-            await walk(to: CGFloat.random(in: 380...900), speed: 330)
+            await walk(to: min(max(critterX + CGFloat.random(in: -420...420), 380), lastLayout.size.width - 300), speed: 330)
             guard leftAlone else { return }
             await stompHop()
         }
@@ -506,6 +554,7 @@ struct HomeView: View {
         }
         solo = nil
         lookPoint = nil
+        if stageBusy, stagePoint != nil { endStage() }
         if perch > 0 { withAnimation(.spring(duration: 0.5, bounce: 0.3)) { perch = 0 } }
     }
 
@@ -530,6 +579,9 @@ struct HomeView: View {
         case .dancing: await dance()
         case .playingBall: await playBallAlone()
         case .watchingFish: await watchFish()
+        case .sliding: await slide(alone: true)
+        case .bouncing: await bounce(alone: true)
+        case .makingMusic: await playXylophoneAlone()
         }
         if solo == activity { endSolo() }
     }
@@ -581,7 +633,7 @@ struct HomeView: View {
     /// Throws the ball for itself and fetches it, a few times.
     private func playBallAlone() async {
         guard let pet = store.pet else { return }
-        var config = Playground.Config(floorY: lastLayout.petCenter.y + 118, leftX: 60, rightX: lastLayout.size.width - 60, homeX: min(max(critterX, 420), 860), ceilingY: 150)
+        var config = Playground.Config(floorY: lastLayout.petCenter.y + 118, leftX: 60, rightX: lastLayout.size.width - 60, homeX: min(max(critterX, 420), lastLayout.size.width - 400), ceilingY: 150)
         config.critterSpeed = 300 + pet.needs.energy * 2
         withAnimation(.spring) { playground = Playground(config: config, critterX: critterX) }
         say(["Jag leker själv lite!", "Boll! Boll!", "Hämta, hämta!"].randomElement()!)
@@ -619,6 +671,234 @@ struct HomeView: View {
         }
     }
 
+    // MARK: Play corner
+
+    private static let barColors: [Color] = [.coral, Color(hex: 0xFF9F68), .butter, .mint, .sky, .lavender]
+
+    private func barRect(_ index: Int, layout: RoomLayout) -> CGRect {
+        let xylo = layout.xylophone
+        let width: CGFloat = 34
+        let gap = (xylo.width - 30 - width * 6) / 5
+        let height = xylo.height - CGFloat(index) * 9
+        let x = xylo.minX + 15 + CGFloat(index) * (width + gap)
+        return CGRect(x: x, y: xylo.midY - height / 2 + CGFloat(index) * 2, width: width, height: height)
+    }
+
+    /// The slide, the xylophone bars and the bouncy cushion: things you can tap.
+    private func playCorner(layout: RoomLayout) -> some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(width: layout.slideArea.width, height: layout.slideArea.height)
+                .position(x: layout.slideArea.midX, y: layout.slideArea.midY)
+                .onTapGesture { Task { await slide(alone: false) } }
+                .accessibilityElement()
+                .accessibilityIdentifier("slide")
+                .accessibilityLabel("Rutschkana. Tryck så åker sötisen.")
+                .accessibilityAddTraits(.isButton)
+
+            ForEach(0..<6, id: \.self) { index in
+                let rect = barRect(index, layout: layout)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Self.barColors[index])
+                    .overlay(alignment: .top) { Circle().fill(.white.opacity(0.8)).frame(width: 9, height: 9).padding(.top, 8) }
+                    .overlay(alignment: .bottom) { Circle().fill(.white.opacity(0.8)).frame(width: 9, height: 9).padding(.bottom, 8) }
+                    .frame(width: rect.width, height: rect.height)
+                    .offset(y: struckBar == index ? 5 : 0)
+                    .contentShape(Rectangle().inset(by: -6))
+                    .position(x: rect.midX, y: rect.midY)
+                    .onTapGesture { strike(index, byPlayer: true) }
+                    .accessibilityElement()
+                    .accessibilityIdentifier("xylophone-\(index)")
+                    .accessibilityLabel("Xylofon, ton \(index + 1)")
+                    .accessibilityAddTraits(.isButton)
+            }
+
+            BouncyCushion(squashed: cushionSquash)
+                .frame(width: 260, height: 110)
+                .contentShape(Ellipse())
+                .position(x: layout.cushion.x, y: layout.cushion.y - BouncyCushion.top + 55)
+                .onTapGesture { Task { await bounce(alone: false) } }
+                .accessibilityElement()
+                .accessibilityIdentifier("cushion")
+                .accessibilityLabel("Studsdyna. Tryck så studsar sötisen.")
+                .accessibilityAddTraits(.isButton)
+        }
+    }
+
+    /// Can it go and play in the play corner right now? Says why not, if it can't.
+    private func readyToPlay(alone: Bool) -> Bool {
+        guard !stageBusy, toy == nil, let pet = store.pet, pet.isAlive else { return false }
+        if alone { return true }
+        noteTouch()
+        if pet.isAsleep { say("Zzz…"); return false }
+        if pet.temper(at: store.now) >= .grumpy { say("Inte nu…", chatty: true); return false }
+        if pet.needs.energy < 10 { say("För trött…"); return false }
+        return true
+    }
+
+    private func stillPlaying(alone: Bool, _ activity: SoloActivity) -> Bool {
+        alone ? stillDoing(activity) : !Task.isCancelled && store.pet?.isAsleep == false
+    }
+
+    private func slide(alone: Bool) async {
+        guard readyToPlay(alone: alone) else { return }
+        stageBusy = true
+        let l = lastLayout
+        if !alone { busyUntil = Date().addingTimeInterval(9) }
+        await walk(to: l.slideLadderX, speed: alone ? 170 : 260)
+        guard stillPlaying(alone: alone, .sliding) else { return endStage() }
+        facingRight = true
+        // Feet on the ladder, the platform, then along the top of the ramp (it is 40 thick, drawn on its centre line).
+        let rampTop: CGFloat = 18
+        func at(_ x: CGFloat, _ feetY: CGFloat) -> CGPoint { l.critterCenter(feetAt: CGPoint(x: x, y: feetY)) }
+        stagePoint = l.petCenter
+        stagePoint = at(l.slideLadderX, l.feetY)
+        withAnimation(.easeInOut(duration: 1.1)) { stagePoint = at(l.slideLadderX + 10, l.slideTop.y) }
+        try? await Task.sleep(for: .seconds(1.15))
+        withAnimation(.easeInOut(duration: 0.35)) { stagePoint = at(l.slideLadderX + 90, l.slideTop.y) }
+        try? await Task.sleep(for: .seconds(0.5))
+        guard stillPlaying(alone: alone, .sliding) else { return endStage() }
+        say(["Wiiiii!", "Huiii!", "Här kommer jag!"].randomElement()!)
+        SoundFX.play(.whoosh)
+        moodOverride = (.excited, Date().addingTimeInterval(2))
+        withAnimation(.easeIn(duration: 0.7)) { stagePoint = at(l.slideBottom.x - 70, l.slideBottom.y - 30 - rampTop) }
+        try? await Task.sleep(for: .seconds(0.7))
+        withAnimation(.easeOut(duration: 0.3)) { stagePoint = at(l.slideBottom.x + 50, l.slideBottom.y - rampTop) }
+        try? await Task.sleep(for: .seconds(0.3))
+        withAnimation(.easeOut(duration: 0.2)) { stagePoint = at(l.slideBottom.x + 110, l.feetY) }
+        try? await Task.sleep(for: .seconds(0.25))
+        critterX = l.slideBottom.x + 110
+        Haptics.thump()
+        SoundFX.play(.bounce)
+        addHearts(at: CGPoint(x: critterX, y: l.petCenter.y - 80), count: 2)
+        reward(alone: alone, fun: 8)
+        say(alone ? "Igen, igen!" : ["Igen! Igen!", "Det var så kul!"].randomElement()!, chatty: alone)
+        endStage()
+    }
+
+    private func bounce(alone: Bool) async {
+        guard readyToPlay(alone: alone) else { return }
+        stageBusy = true
+        let l = lastLayout
+        if !alone { busyUntil = Date().addingTimeInterval(8) }
+        await walk(to: l.cushion.x, speed: alone ? 170 : 260)
+        guard stillPlaying(alone: alone, .bouncing) else { return endStage() }
+        // Feet on the cushion's top; when it squashes, the top sinks and the feet go with it.
+        let rest = l.critterCenter(feetAt: l.cushion)
+        let sunk = CGPoint(x: rest.x, y: rest.y + BouncyCushion.sink)
+        stagePoint = l.petCenter
+        withAnimation(.spring(duration: 0.35)) { stagePoint = rest }
+        try? await Task.sleep(for: .seconds(0.4))
+        for (index, height) in [90.0, 150, 220, 260].enumerated() {
+            guard stillPlaying(alone: alone, .bouncing) else { return endStage() }
+            withAnimation(.easeOut(duration: 0.1)) {
+                cushionSquash = true
+                stagePoint = sunk
+            }
+            SoundFX.play(.boing)
+            try? await Task.sleep(for: .milliseconds(110))
+            let up = 0.18 + height / 900
+            withAnimation(.spring(duration: 0.15)) { cushionSquash = false }
+            withAnimation(.easeOut(duration: up)) { stagePoint = CGPoint(x: rest.x, y: rest.y - height) }
+            if index == 3 { say(["Boing boing!", "Jag flyger!", "Högre!"].randomElement()!) }
+            moodOverride = (.excited, Date().addingTimeInterval(1))
+            try? await Task.sleep(for: .seconds(up))
+            withAnimation(.easeIn(duration: up)) { stagePoint = rest }
+            try? await Task.sleep(for: .seconds(up))
+        }
+        withAnimation(.easeOut(duration: 0.1)) { cushionSquash = true; stagePoint = sunk }
+        try? await Task.sleep(for: .milliseconds(110))
+        withAnimation(.spring(duration: 0.2)) { cushionSquash = false; stagePoint = rest }
+        try? await Task.sleep(for: .milliseconds(200))
+        withAnimation(.spring(duration: 0.4)) { stagePoint = l.critterCenter(feetAt: CGPoint(x: l.cushion.x - 180, y: l.feetY)) }
+        try? await Task.sleep(for: .seconds(0.4))
+        critterX = l.cushion.x - 180
+        reward(alone: alone, fun: 6)
+        endStage()
+    }
+
+    /// A xylophone note. When you play, the sötis dances along; every few notes is a bit of fun.
+    private func strike(_ index: Int, byPlayer: Bool) {
+        SoundFX.play(SoundFX.Effect.notes[index])
+        let rect = barRect(index, layout: lastLayout)
+        withAnimation(.spring(duration: 0.15)) { struckBar = index }
+        Task {
+            try? await Task.sleep(for: .milliseconds(140))
+            if struckBar == index { withAnimation(.spring(duration: 0.25)) { struckBar = nil } }
+        }
+        floating.append(FloatingText(text: index.isMultiple(of: 2) ? "♪" : "♫", point: CGPoint(x: rect.midX, y: rect.minY - 30)))
+        cleanUpLater()
+        guard byPlayer, let pet = store.pet, !pet.isAsleep else { return }
+        lastTouch = Date()
+        if solo != nil { endSolo() }
+        notesPlayed += 1
+        let calm = pet.temper(at: store.now) < .grumpy && stagePoint == nil && toy == nil
+        let near = abs(critterX - lastLayout.xylophone.midX) < 650
+        if calm, !near, Date() > busyUntil {
+            // It hears the music and comes over to dance.
+            busyUntil = Date().addingTimeInterval(6)
+            say("Musik! Jag kommer!", chatty: true)
+            Task { await walk(to: lastLayout.xylophone.minX - 150, speed: 300) }
+        } else if calm, near {
+            busyUntil = Date().addingTimeInterval(4)
+            facingRight = lastLayout.xylophone.midX > critterX
+            withAnimation(.spring(duration: 0.2)) {
+                hop = true
+                lean = notesPlayed.isMultiple(of: 2) ? 8 : -8
+            }
+            Task {
+                try? await Task.sleep(for: .milliseconds(200))
+                withAnimation(.spring(duration: 0.3, bounce: 0.5)) { hop = false; lean = 0 }
+            }
+            moodOverride = (.excited, Date().addingTimeInterval(1.2))
+        }
+        if notesPlayed.isMultiple(of: 4) {
+            store.perform { state, now in _ = state.pet?.play(at: now, fun: 3, energy: 0.5) }
+        }
+        if notesPlayed.isMultiple(of: 10) {
+            say(["Vilken fin låt!", "Mer musik!", "Jag dansar!"].randomElement()!)
+        }
+    }
+
+    private func playXylophoneAlone() async {
+        let l = lastLayout
+        await walk(to: l.xylophone.minX - 150)
+        guard stillDoing(.makingMusic) else { return }
+        facingRight = true
+        say(["Lyssna på min låt!", "Pling plong!"].randomElement()!)
+        let tune = [0, 2, 4, 2, 0, 2, 4, 5, 4, 2, 1, 0]
+        for note in tune {
+            guard stillDoing(.makingMusic) else { return }
+            strike(note, byPlayer: false)
+            withAnimation(.spring(duration: 0.18)) { hop = true }
+            try? await Task.sleep(for: .milliseconds(180))
+            withAnimation(.spring(duration: 0.25)) { hop = false }
+            try? await Task.sleep(for: .milliseconds(240))
+        }
+        store.perform { state, _ in state.pet?.amuseItself(fun: 4) }
+    }
+
+    private func reward(alone: Bool, fun: Double) {
+        if alone {
+            store.perform { state, _ in state.pet?.amuseItself(fun: fun / 2, energy: 1) }
+        } else {
+            store.perform { state, now in _ = state.pet?.play(at: now, fun: fun, energy: 2) }
+            floating.append(FloatingText(text: "+\(Int(fun)) kul", point: CGPoint(x: critterX, y: lastLayout.petCenter.y - 160)))
+            cleanUpLater()
+        }
+    }
+
+    private func endStage() {
+        if let stagePoint, abs(stagePoint.y - lastLayout.critterCenter(feetAt: CGPoint(x: 0, y: lastLayout.feetY)).y) > 2 {
+            critterX = stagePoint.x
+            withAnimation(.spring(duration: 0.4)) { self.stagePoint = nil }
+        } else {
+            stagePoint = nil
+        }
+        stageBusy = false
+    }
+
     private func watchFish() async {
         await walk(to: lastLayout.fishBowl.x + 10)
         guard stillDoing(.watchingFish) else { return }
@@ -651,6 +931,7 @@ struct HomeView: View {
         let duration = Double(distance) / speed
         facingRight = target > critterX
         walking = true
+        stroll = (critterX, target, Date(), duration)
         withAnimation(.linear(duration: duration)) { critterX = target }
         try? await Task.sleep(for: .seconds(duration))
         walking = false
@@ -663,7 +944,7 @@ struct HomeView: View {
         noteTouch()
         if pet.isAsleep { return say("Zzz…") }
         if pet.needs.energy < 10 { return say("För trött för att leka…") }
-        var config = Playground.Config(floorY: layout.petCenter.y + 118, leftX: 60, rightX: layout.size.width - 60, homeX: 600, ceilingY: 150)
+        var config = Playground.Config(floorY: layout.petCenter.y + 118, leftX: 60, rightX: layout.size.width - 60, homeX: Double(camera.x) + 600, ceilingY: 150)
         config.critterSpeed = 380 + pet.needs.energy * 2
         withAnimation(.spring) {
             showFridge = false
@@ -779,15 +1060,24 @@ struct HomeView: View {
             }
     }
 
+    /// The empty room: swipe to look around; a touch makes the sötis look at your finger or blows a bubble.
     private func roomTouch(layout: RoomLayout) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("room"))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("screen"))
             .onChanged { value in
-                if solo != nil || Date().timeIntervalSince(lastTouch) > 1 { noteTouch() }
-                lookPoint = value.location
+                if camera.drag(translation: value.translation.width) {
+                    lastTouch = Date()
+                    lookPoint = nil
+                    return
+                }
+                lookPoint = worldPoint(value.location)
             }
             .onEnded { value in
-                if toy == .bubbles, hypot(value.translation.width, value.translation.height) < 12 {
-                    playground?.blowBubble(at: Point2(value.location.x, min(value.location.y, layout.petCenter.y)))
+                if camera.endDrag(velocity: value.velocity.width) { return }
+                if solo != nil || Date().timeIntervalSince(lastTouch) > 1 { noteTouch() }
+                lastTouch = Date()
+                let point = worldPoint(value.location)
+                if toy == .bubbles {
+                    playground?.blowBubble(at: Point2(point.x, min(point.y, layout.petCenter.y)))
                     Haptics.soft()
                     SoundFX.play(.boop)
                 }
@@ -796,6 +1086,25 @@ struct HomeView: View {
                     lookPoint = nil
                 }
             }
+    }
+
+    private func worldPoint(_ screen: CGPoint) -> CGPoint {
+        CGPoint(x: screen.x + camera.x, y: screen.y)
+    }
+
+    /// What the camera keeps on screen when you aren't swiping: the ball in play, otherwise the sötis.
+    private func followTarget() -> CGFloat? {
+        guard !petting, draggedFood == nil, let pet = store.pet else { return nil }
+        if pet.isAsleep { return RoomLayout.bedX }
+        if let playground {
+            return playground.ballState == .flying ? playground.ball.x : playground.critterX
+        }
+        if let stagePoint { return stagePoint.x }
+        if let stroll {
+            let progress = min(1, Date().timeIntervalSince(stroll.start) / max(0.01, stroll.duration))
+            return stroll.from + (stroll.to - stroll.from) * progress
+        }
+        return critterX
     }
 
     // MARK: Petting and tickling
@@ -937,7 +1246,8 @@ struct HomeView: View {
 
     // MARK: Care actions
 
-    private func dragFood(_ id: String, to point: CGPoint, ended: Bool, layout: RoomLayout) {
+    private func dragFood(_ id: String, to screenPoint: CGPoint, ended: Bool, layout: RoomLayout) {
+        let point = worldPoint(screenPoint)
         if !ended {
             if draggedFood == nil { Haptics.tap() }
             draggedFood = id
@@ -1124,28 +1434,52 @@ private struct ReadingBook: View {
     }
 }
 
+/// A big squishy cushion to bounce on.
+struct BouncyCushion: View {
+    let squashed: Bool
+    /// Where the middle of its top face is, in its 260 × 110 frame: feet land here.
+    static let top: CGFloat = 50
+    static let squash: CGFloat = 0.8
+    /// How far the top face drops when it squashes (it squashes from the bottom).
+    static var sink: CGFloat { (110 - top) * (1 - squash) }
+
+    var body: some View {
+        SketchView(width: 260, height: 110) { c in
+            c.oval(130, 78, 124, 30, .lavenderDeep)
+            c.oval(130, 62, 120, 40, .lavender)
+            c.oval(130, 52, 96, 22, Color(hex: 0xD9CCFF))
+            for (x, y) in [(70.0, 64.0), (120, 74), (176, 66), (100, 52), (154, 50)] {
+                c.dot(x, y, 4, .white.opacity(0.8))
+            }
+        }
+        .scaleEffect(x: squashed ? 1.08 : 1, y: squashed ? Self.squash : 1, anchor: .bottom)
+        .animation(.spring(duration: 0.15), value: squashed)
+    }
+}
+
+/// A pill along the top: the score and how to play. Never over the sötis.
 private struct PlayScore: View {
     let toy: Toy
     let fetches: Int
     let pops: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(toy == .ball ? "Apport!" : "Bubbelpop!").font(.cute(20, .bold))
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(toy == .ball ? fetches : pops)").font(.cute(40, .bold)).contentTransition(.numericText())
-                    .accessibilityIdentifier("play-count")
-                Text(toy == .ball ? "hämtningar" : "bubblor").font(.cute(16, .medium)).foregroundStyle(Color.inkSoft)
+        HStack(spacing: 12) {
+            Text("\(toy == .ball ? fetches : pops)")
+                .font(.cute(30, .bold))
+                .contentTransition(.numericText())
+                .accessibilityIdentifier("play-count")
+            VStack(alignment: .leading, spacing: 0) {
+                Text(toy == .ball ? "Apport! · hämtningar" : "Bubbelpop! · bubblor").font(.cute(17, .bold))
+                Text(toy == .ball ? "Dra i bollen och släpp för att kasta" : "Tryck i rummet för att blåsa bubblor")
+                    .font(.cute(14, .medium))
+                    .foregroundStyle(Color.inkSoft)
             }
-            Text(toy == .ball ? "Dra i bollen och släpp för att kasta!" : "Tryck i rummet för att blåsa bubblor!")
-                .font(.cute(15, .medium))
-                .foregroundStyle(Color.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(Color.ink)
-        .padding(18)
-        .frame(width: 240, alignment: .leading)
-        .card()
+        .padding(.horizontal, 20)
+        .frame(height: 64)
+        .card(radius: 32)
         .allowsHitTesting(false)
     }
 }
@@ -1218,21 +1552,75 @@ private struct SparkleBurst: View {
     }
 }
 
-struct NeedsPanel: View {
+/// The needs as a slim column of rings, so the panel never covers the room.
+struct NeedsStrip: View {
     let pet: Pet
+    static let height: CGFloat = 7 * 58 + 6 * 8 + 24
 
     var body: some View {
-        VStack(spacing: 12) {
-            NeedBar(title: "Mat", systemName: "fork.knife", value: pet.needs.hunger, tint: Color(hex: 0xFF9F68), iconFill: .peachLight)
-            NeedBar(title: "Vatten", systemName: "drop.fill", value: pet.needs.thirst, tint: .skyDeep, iconFill: .skyLight)
-            NeedBar(title: "Energi", systemName: "moon.fill", value: pet.needs.energy, tint: .lavenderDeep, iconFill: Color(hex: 0xECE4FF))
-            NeedBar(title: "Renhet", systemName: "bubbles.and.sparkles.fill", value: pet.needs.hygiene, tint: .mintDeep, iconFill: .mintLight)
-            NeedBar(title: "Kul", systemName: "tennisball.fill", value: pet.needs.fun, tint: .butterDeep, iconFill: .butterLight)
-            NeedBar(title: "Kärlek", systemName: "heart.fill", value: pet.needs.love, tint: .coral, iconFill: .pinkLight)
-            NeedBar(title: pet.poops.isEmpty ? "Rummet" : "Rummet · \(pet.poops.count) bajskorv\(pet.poops.count == 1 ? "" : "ar")", systemName: "house.fill", value: pet.roomCleanliness, tint: .poopLight, iconFill: Color(hex: 0xEFE6DC))
+        VStack(spacing: 8) {
+            NeedRing(title: "Mat", systemName: "fork.knife", value: pet.needs.hunger, tint: Color(hex: 0xFF9F68), iconFill: .peachLight)
+            NeedRing(title: "Vatten", systemName: "drop.fill", value: pet.needs.thirst, tint: .skyDeep, iconFill: .skyLight)
+            NeedRing(title: "Energi", systemName: "moon.fill", value: pet.needs.energy, tint: .lavenderDeep, iconFill: Color(hex: 0xECE4FF))
+            NeedRing(title: "Renhet", systemName: "bubbles.and.sparkles.fill", value: pet.needs.hygiene, tint: .mintDeep, iconFill: .mintLight)
+            NeedRing(title: "Kul", systemName: "tennisball.fill", value: pet.needs.fun, tint: .butterDeep, iconFill: .butterLight)
+            NeedRing(title: "Kärlek", systemName: "heart.fill", value: pet.needs.love, tint: .coral, iconFill: .pinkLight)
+            NeedRing(title: pet.poops.isEmpty ? "Rummet" : "Rummet, \(pet.poops.count) bajskorv\(pet.poops.count == 1 ? "" : "ar")", systemName: "house.fill", value: pet.roomCleanliness, tint: .poopLight, iconFill: Color(hex: 0xEFE6DC), badge: pet.poops.count)
         }
-        .padding(18)
-        .card(fill: .white.opacity(0.95))
+        .padding(.vertical, 12)
+        .padding(.horizontal, 9)
+        .card(fill: .white.opacity(0.95), radius: 38)
+    }
+}
+
+/// One need: its icon inside a ring that fills up. Low needs turn red and pulse.
+private struct NeedRing: View {
+    let title: String
+    let systemName: String
+    let value: Double
+    let tint: Color
+    let iconFill: Color
+    var badge = 0
+
+    var body: some View {
+        let low = value < 25
+        ZStack {
+            Circle().fill(iconFill)
+            Circle().stroke(Color(hex: 0xF3E8EE), lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: max(0.03, value / 100))
+                .stroke(low ? Color.coralDeep : tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.spring, value: value)
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.ink)
+        }
+        .frame(width: 52, height: 52)
+        .padding(3)
+        .overlay(alignment: .topTrailing) {
+            if badge > 0 {
+                Text("\(badge)")
+                    .font(.cute(13, .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Circle().fill(Color.coralDeep))
+            }
+        }
+        .modifier(LowPulse(active: low))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title): \(Int(value)) procent")
+    }
+}
+
+private struct LowPulse: ViewModifier {
+    let active: Bool
+    @State private var on = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(active && on ? 1.08 : 1)
+            .onAppear { withAnimation(.easeInOut(duration: 0.7).repeatForever()) { on = true } }
     }
 }
 
@@ -1290,7 +1678,7 @@ private struct FridgeTray: View {
                         .contentShape(Rectangle())
                         .onTapGesture { onFeed(item.id) }
                         .gesture(
-                            DragGesture(minimumDistance: 8, coordinateSpace: .named("room"))
+                            DragGesture(minimumDistance: 8, coordinateSpace: .named("screen"))
                                 .onChanged { onDrag(item.id, $0.location, false) }
                                 .onEnded { onDrag(item.id, $0.location, true) }
                         )

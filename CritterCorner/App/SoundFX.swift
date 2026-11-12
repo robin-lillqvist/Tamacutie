@@ -5,7 +5,11 @@ import AVFoundation
 @MainActor
 final class SoundFX {
     enum Effect: CaseIterable {
-        case boop, pop, chomp, coin, squeak, purr, bounce, giggle, splash
+        case boop, pop, chomp, coin, squeak, purr, bounce, giggle, splash, whoosh, boing
+        /// Xylophone bars, low to high (a pentatonic scale, so any tune sounds nice).
+        case note0, note1, note2, note3, note4, note5
+
+        static let notes: [Effect] = [.note0, .note1, .note2, .note3, .note4, .note5]
     }
 
     static let shared = SoundFX()
@@ -56,6 +60,14 @@ final class SoundFX {
         case .bounce: tones([(240, 120, 0.07)], volume: 0.5)
         case .giggle: tones([(700, 900, 0.06), (760, 980, 0.06), (820, 1060, 0.08)], volume: 0.4)
         case .splash: noise(bursts: 1, length: 0.25, gap: 0, volume: 0.25)
+        case .whoosh: tones([(900, 260, 0.55)], volume: 0.3)
+        case .boing: tones([(180, 520, 0.16)], volume: 0.45)
+        case .note0: tones([(523, 523, 0.4)], volume: 0.4)
+        case .note1: tones([(587, 587, 0.4)], volume: 0.4)
+        case .note2: tones([(659, 659, 0.4)], volume: 0.4)
+        case .note3: tones([(784, 784, 0.4)], volume: 0.4)
+        case .note4: tones([(880, 880, 0.4)], volume: 0.4)
+        case .note5: tones([(1047, 1047, 0.4)], volume: 0.4)
         }
     }
 

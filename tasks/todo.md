@@ -49,3 +49,11 @@
 - Temper: 7 TemperTests + a real-time over-petting test. A UI play-through pesters it from grumpy to sad to furious in about 3 minutes of steady pestering.
 - Fixed along the way: love decays slightly between strokes, so it was never exactly 100 and over-petting never made it grumpy on a device. "Full" now starts at 99.
 - Solo life: 7 SoloLifeTests and a self-fetch test. A UI test waits until it starts something on its own, then checks that a touch interrupts it. Screenshots show the ball game and reading in the window.
+
+# Scrolling world + more to do
+- [x] Camera (CritterKit) + ScrollingWorld + wide home room + decor migration
+- [x] Home play corner: slide, xylophone, bouncy cushion + solo activities
+- [x] Menus never cover the sötis: slim needs strip, fridge under the top bar, play pill on top, critter above the dock
+- [ ] Wide park in zones: swings, slide, sandbox, ducks, butterflies, ice-cream kiosk; mounds across the park
+- [ ] Scrolling shop shelf
+- [ ] Deploy silently to both iPads

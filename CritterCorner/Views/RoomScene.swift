@@ -5,11 +5,33 @@ import SwiftUI
 struct RoomLayout {
     let size: CGSize
     var floorTop: CGFloat { size.height * 0.66 }
-    var petCenter: CGPoint { CGPoint(x: 640, y: size.height * 0.86 - 150) }
+    /// Where the critter stands: feet just above the dock, so the dock never covers them.
+    var petCenter: CGPoint { CGPoint(x: 640, y: size.height * 0.86 - 180) }
     var bowlCenter: CGPoint { CGPoint(x: 960, y: floorTop + 90) }
     /// The top of the window sill (RoomGeometry draws the window ending 130 above the floor line).
     var windowSillY: CGFloat { floorTop - 128 }
     var fishBowl: CGPoint { CGPoint(x: 462, y: floorTop - 234) }
+    /// Where the critter's feet touch the floor.
+    var feetY: CGFloat { petCenter.y + 150 - Self.groundInset }
+    /// The critter's feet are drawn this far above the bottom of its 300 pt frame (14 of 200 canvas units).
+    static let groundInset: CGFloat = 21
+
+    /// The frame centre that puts the critter's feet exactly on `feet`, at this scale (frame scaled from its bottom).
+    func critterCenter(feetAt feet: CGPoint, scale: CGFloat = 1) -> CGPoint {
+        CGPoint(x: feet.x, y: feet.y + Self.groundInset * scale - 150)
+    }
+
+    // The play corner, in the right half of the wide room.
+    var slideLadderX: CGFloat { 1440 }
+    /// Feet on the slide's platform.
+    var slideTop: CGPoint { CGPoint(x: 1490, y: floorTop - 130) }
+    /// Feet where the ramp meets the floor.
+    var slideBottom: CGPoint { CGPoint(x: 1770, y: feetY - 8) }
+    var slideArea: CGRect { CGRect(x: 1400, y: slideTop.y - 30, width: 420, height: feetY - slideTop.y + 40) }
+    var xylophone: CGRect { CGRect(x: 1880, y: floorTop + 26, width: 270, height: 92) }
+    /// The middle of the bouncy cushion's top, where the feet land.
+    var cushion: CGPoint { CGPoint(x: 2200, y: floorTop + 80) }
+    var hasPlayCorner: Bool { size.width > 2000 }
 
     func point(for decor: PlacedDecor) -> CGPoint {
         CGPoint(x: decor.x * size.width, y: decor.y * size.height)
@@ -127,6 +149,8 @@ private struct RoomStatic: View {
             c.oval(300, floorTop + 30, 86, 24, Color(hex: 0xD9CCFF))
             c.oval(340, floorTop + 24, 28, 12, .white)
 
+            drawPlayCorner(c, layout: RoomLayout(size: size))
+
             // Food and water bowls.
             let bowl = CGPoint(x: 930, y: floorTop + 100)
             if foodInBowl {
@@ -144,6 +168,74 @@ private struct RoomStatic: View {
             }
         }
         .frame(width: size.width, height: size.height)
+    }
+}
+
+extension RoomStatic {
+    /// Slide, xylophone stand and wall art in the right half of the room.
+    func drawPlayCorner(_ c: GraphicsContext, layout l: RoomLayout) {
+        guard l.hasPlayCorner else { return }
+        let floorTop = l.floorTop
+
+        // Rainbow decal and a star garland on the wall.
+        let arc = CGPoint(x: 2040, y: floorTop - 120)
+        for (index, color) in [Color.coral, Color(hex: 0xFF9F68), .butter, .mint, .sky, .lavender].enumerated() {
+            let r = 150 - CGFloat(index) * 18
+            c.outline(Path { p in p.addArc(center: arc, radius: r, startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false) }, color, width: 16)
+        }
+        c.oval(arc.x - 150, arc.y + 6, 42, 20, .white); c.oval(arc.x - 120, arc.y - 4, 28, 18, .white)
+        c.oval(arc.x + 150, arc.y + 6, 42, 20, .white); c.oval(arc.x + 120, arc.y - 4, 28, 18, .white)
+        c.line(.ink.opacity(0.3), width: 2) { p in
+            p.move(to: CGPoint(x: 1350, y: 90)); p.addQuadCurve(to: CGPoint(x: 2340, y: 90), control: CGPoint(x: 1845, y: 160))
+        }
+        for index in 0..<9 {
+            let t = (Double(index) + 0.5) / 9
+            let x = 1350 + (2340 - 1350) * t
+            let y = 90 + 140 * t * (1 - t)
+            c.star(x, y + 12, 14, [Color.butter, .pink, .sky, .mint, .lavender][index % 5])
+        }
+
+        // Cubby shelf with toys.
+        c.box(2290, floorTop - 120, 70, 230, radius: 10, .wood)
+        for row in 0..<3 { c.box(2298, floorTop - 112 + CGFloat(row) * 74, 54, 62, radius: 6, .woodDeep.opacity(0.35)) }
+        c.dot(2325, floorTop - 82, 18, .coral)
+        c.box(2308, floorTop - 20, 34, 30, radius: 6, .sky)
+        c.star(2325, floorTop + 70, 18, .butter)
+
+        // Slide: ladder, platform and ramp.
+        let top = l.slideTop
+        let bottom = l.slideBottom
+        let ladder = l.slideLadderX
+        c.line(.coralDeep, width: 9) { p in
+            p.move(to: CGPoint(x: ladder - 26, y: l.feetY)); p.addLine(to: CGPoint(x: ladder - 26, y: top.y - 50))
+            p.move(to: CGPoint(x: ladder + 26, y: l.feetY)); p.addLine(to: CGPoint(x: ladder + 26, y: top.y - 50))
+        }
+        c.line(.coral, width: 7) { p in
+            var y = l.feetY - 30
+            while y > top.y {
+                p.move(to: CGPoint(x: ladder - 26, y: y)); p.addLine(to: CGPoint(x: ladder + 26, y: y))
+                y -= 36
+            }
+        }
+        c.box(ladder - 34, top.y, 150, 18, radius: 8, .butter)
+        c.box(ladder + 100, top.y + 16, 12, l.feetY - top.y - 16, radius: 6, .butterDeep)
+        let ramp = Path { p in
+            p.move(to: CGPoint(x: ladder + 104, y: top.y))
+            p.addLine(to: CGPoint(x: bottom.x - 70, y: bottom.y - 30))
+            p.addQuadCurve(to: CGPoint(x: bottom.x + 60, y: bottom.y), control: CGPoint(x: bottom.x - 20, y: bottom.y))
+        }
+        c.outline(ramp, .mintDeep, width: 40)
+        c.outline(ramp, .mint, width: 28)
+        c.outline(ramp.offsetBy(dx: 0, dy: -4), .white.opacity(0.5), width: 4)
+
+        // Xylophone stand (the bars themselves are drawn by the home screen, so they can be played).
+        let xylo = l.xylophone
+        c.shape(.wood) { $0.addLines([
+            CGPoint(x: xylo.minX, y: xylo.minY + 6), CGPoint(x: xylo.maxX, y: xylo.minY + 22),
+            CGPoint(x: xylo.maxX, y: xylo.maxY - 10), CGPoint(x: xylo.minX, y: xylo.maxY + 6),
+        ]) }
+        c.box(xylo.minX + 10, xylo.maxY, 12, 26, radius: 5, .woodDeep)
+        c.box(xylo.maxX - 22, xylo.maxY - 14, 12, 30, radius: 5, .woodDeep)
     }
 }
 

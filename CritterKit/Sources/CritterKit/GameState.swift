@@ -57,7 +57,8 @@ public enum PurchaseResult: Equatable, Sendable {
 }
 
 public struct GameState: Codable, Equatable, Sendable {
-    public static let currentVersion = 1
+    /// 2: the room became twice as wide, so decor x is a fraction of the wide room.
+    public static let currentVersion = 2
 
     public var version = GameState.currentVersion
     public var pet: Pet?
@@ -78,6 +79,14 @@ public struct GameState: Codable, Equatable, Sendable {
         piggyBank = 0
         giftStreak = 0
         lastUpdate = now
+    }
+
+    /// Brings an older save up to date.
+    public mutating func migrate() {
+        if version < 2 {
+            for index in room.indices { room[index].x /= Rules.roomScreens }
+        }
+        version = Self.currentVersion
     }
 
     public var cosiness: Int {

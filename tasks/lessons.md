@@ -18,3 +18,9 @@
 ## Test model rules with time passing
 - Needs decay continuously, so "exactly full" never lasts on a device. The over-petting rule only passed its unit tests because those never advanced time between strokes. When a rule compares a decaying value to a limit, test it with `advance(to:)` between actions.
 - UI-test screenshots only land on disk via `TEST_RUNNER_SNAPSHOT_DIR` (xcodebuild strips the prefix). Plain `SNAPSHOT_DIR` silently writes nothing.
+
+## Scrolling worlds
+- Things that stand on something must be placed by their *drawn* feet, not their frame. The critter's feet sit 21 pt above its 300 pt frame (`RoomLayout.groundInset`); use `critterCenter(feetAt:)` and check contact in a zoomed snapshot. The user spotted a sötis bouncing in mid-air over the cushion.
+- A walk animated with `withAnimation` sets the final x at once. Anything that tracks the critter while it moves (the camera) needs the interpolated position (`stroll`).
+- In XCUITest, `element.tap()` silently missed buttons in a `.position`ed overlay, though the element said it was hittable. Coordinate taps (`element.coordinate(withNormalizedOffset: 0.5, 0.5).tap()`) behave like fingers. When a tap "does nothing", count taps in the app before blaming the app logic.
+- Menus must never cover the sötis: `MenusClearUITests` checks the needs strip, dock, fridge and play pill against the critter's body frame.

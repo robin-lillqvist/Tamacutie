@@ -209,39 +209,6 @@ struct SpeechBubble: View {
     }
 }
 
-struct NeedBar: View {
-    let title: String
-    let systemName: String
-    let value: Double
-    let tint: Color
-    let iconFill: Color
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.ink)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(iconFill))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.cute(15))
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(hex: 0xF3E8EE))
-                        Capsule()
-                            .fill(value < 25 ? Color.coralDeep : tint)
-                            .frame(width: max(10, geo.size.width * value / 100))
-                            .animation(.spring, value: value)
-                    }
-                }
-                .frame(height: 10)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title): \(Int(value)) procent")
-    }
-}
-
 /// A short floating message, e.g. "+2 coins".
 struct FloatingText: Identifiable {
     let id = UUID()

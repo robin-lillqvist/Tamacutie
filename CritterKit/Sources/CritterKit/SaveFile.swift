@@ -10,7 +10,9 @@ public enum SaveFile {
     public static func decode(_ data: Data) throws -> GameState {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
-        return try decoder.decode(GameState.self, from: data)
+        var state = try decoder.decode(GameState.self, from: data)
+        state.migrate()
+        return state
     }
 
     public static func load(from url: URL) -> GameState? {

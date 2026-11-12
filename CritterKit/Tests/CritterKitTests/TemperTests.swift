@@ -133,7 +133,7 @@ final class SoloLifeTests: XCTestCase {
 
     func testEveryDaytimeActivityComesUp() {
         let picks = Set(stride(from: 0.0, to: 1, by: 0.02).compactMap { pick(rested(), roll: $0) })
-        XCTAssertEqual(picks, [.reading, .playingBall, .dancing, .watchingFish])
+        XCTAssertEqual(picks, [.reading, .playingBall, .dancing, .watchingFish, .sliding, .bouncing, .makingMusic])
     }
 
     func testAtNightItLooksAtTheStarsInsteadOfReading() {
@@ -146,6 +146,8 @@ final class SoloLifeTests: XCTestCase {
         var bored = rested()
         bored.needs.fun = 20
         XCTAssertEqual(pick(bored, roll: 0), .playingBall)
+        let boredPicks = Set(stride(from: 0.0, to: 1, by: 0.02).compactMap { pick(bored, roll: $0) })
+        XCTAssertTrue(boredPicks.isSuperset(of: [.sliding, .bouncing]), "bored, it heads for the play corner too")
         var tired = rested()
         tired.needs.energy = 35
         let picks = Set(stride(from: 0.0, to: 1, by: 0.05).compactMap { pick(tired, roll: $0) })

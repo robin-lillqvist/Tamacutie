@@ -10,6 +10,12 @@ public enum SoloActivity: String, CaseIterable, Sendable {
     /// Tosses the ball and fetches it for itself.
     case playingBall
     case watchingFish
+    /// Down the slide in the play corner.
+    case sliding
+    /// Bounces on the big cushion.
+    case bouncing
+    /// Plinks away on the xylophone.
+    case makingMusic
 }
 
 public enum SoloLife {
@@ -28,9 +34,9 @@ public enum SoloLife {
         let weighted: [(SoloActivity, Double)] = if needs.energy < 45 {
             [(window, 3), (.watchingFish, 1)]
         } else if needs.fun < 50 {
-            [(.playingBall, 3), (.dancing, 2), (window, 1)]
+            [(.playingBall, 3), (.dancing, 2), (.sliding, 2), (.bouncing, 2), (window, 1)]
         } else {
-            [(window, 2), (.playingBall, 2), (.dancing, 1), (.watchingFish, 1)]
+            [(window, 2), (.playingBall, 2), (.dancing, 1), (.watchingFish, 1), (.sliding, 1), (.bouncing, 1), (.makingMusic, 1)]
         }
         var target = min(max(roll, 0), 0.999_999) * weighted.reduce(0) { $0 + $1.1 }
         for (activity, weight) in weighted {
