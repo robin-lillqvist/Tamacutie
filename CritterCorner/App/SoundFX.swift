@@ -33,7 +33,14 @@ final class SoundFX {
         try? engine.start()
     }
 
+    /// The mute switch. Saved, so the game stays quiet until you turn sound back on.
+    /// UI tests launch with `-muted YES`.
+    static let mutedKey = "muted"
+
+    static var isMuted: Bool { UserDefaults.standard.bool(forKey: mutedKey) }
+
     static func play(_ effect: Effect) {
+        guard !isMuted else { return }
         shared.play(effect)
     }
 

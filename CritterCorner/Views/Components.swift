@@ -23,6 +23,28 @@ struct DesignCanvas<Content: View>: View {
     }
 }
 
+/// Sound on or off, for the whole game.
+struct MuteButton: View {
+    @AppStorage(SoundFX.mutedKey) private var muted = false
+    var shadow = Color(hex: 0xF3D3DC)
+
+    var body: some View {
+        Button {
+            muted.toggle()
+            if !muted { SoundFX.play(.boop) }
+        } label: {
+            Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(muted ? Color.inkSoft : Color.ink)
+                .frame(width: 58, height: 58)
+                .card(shadow: shadow, radius: 29)
+        }
+        .buttonStyle(SquishyButtonStyle())
+        .accessibilityIdentifier("mute")
+        .accessibilityLabel(muted ? "Ljudet är av. Tryck för att slå på." : "Ljudet är på. Tryck för att stänga av.")
+    }
+}
+
 struct CoinPill: View {
     let coins: Int
     var shadow = Color(hex: 0xF3D3DC)

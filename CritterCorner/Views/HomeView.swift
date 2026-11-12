@@ -63,6 +63,8 @@ struct HomeView: View {
     @State private var cushionSquash = false
     @State private var struckBar: Int?
     @State private var notesPlayed = 0
+    /// Held up by your finger, being carried somewhere.
+    @State private var carrying = false
     /// The walk in progress, so the camera can follow where the critter is, not where it's headed.
     @State private var stroll: (from: CGFloat, to: CGFloat, start: Date, duration: Double)?
 
@@ -258,6 +260,7 @@ struct HomeView: View {
         .offset(y: hop ? -46 : 0)
         .contentShape(Circle().inset(by: 30))
         .gesture(petting(center: center))
+        .simultaneousGesture(pickUpGesture(center: center))
         .simultaneousGesture(TapGesture(count: 2).onEnded { tickle() })
         .position(center)
         .accessibilityElement()
@@ -352,6 +355,7 @@ struct HomeView: View {
                     .buttonStyle(SquishyButtonStyle())
                     .accessibilityLabel("Ta mynten från spargrisen")
                 }
+                MuteButton()
                 ClockPill(now: store.now)
                 CoinPill(coins: store.state.coins)
             }
@@ -418,7 +422,7 @@ struct HomeView: View {
     // MARK: Wandering
 
     private var leftAlone: Bool {
-        toy == nil && Date() > busyUntil && !petting && draggedFood == nil && !showFridge
+        toy == nil && Date() > busyUntil && !petting && draggedFood == nil && !showFridge && !carrying && !stageBusy
     }
 
     private func wanderLoop() async {
@@ -758,7 +762,16 @@ struct HomeView: View {
         try? await Task.sleep(for: .seconds(1.15))
         withAnimation(.easeInOut(duration: 0.35)) { stagePoint = at(l.slideLadderX + 90, l.slideTop.y) }
         try? await Task.sleep(for: .seconds(0.5))
+        await rideSlide(alone: alone)
+    }
+
+    /// From the platform down the ramp to the floor. `stageBusy` is already set.
+    private func rideSlide(alone: Bool) async {
+        let l = lastLayout
+        let rampTop: CGFloat = 18
+        func at(_ x: CGFloat, _ feetY: CGFloat) -> CGPoint { l.critterCenter(feetAt: CGPoint(x: x, y: feetY)) }
         guard stillPlaying(alone: alone, .sliding) else { return endStage() }
+        facingRight = true
         say(["Wiiiii!", "Huiii!", "Här kommer jag!"].randomElement()!)
         SoundFX.play(.whoosh)
         moodOverride = (.excited, Date().addingTimeInterval(2))
@@ -785,11 +798,17 @@ struct HomeView: View {
         await walk(to: l.cushion.x, speed: alone ? 170 : 260)
         guard stillPlaying(alone: alone, .bouncing) else { return endStage() }
         // Feet on the cushion's top; when it squashes, the top sinks and the feet go with it.
+        stagePoint = l.petCenter
+        withAnimation(.spring(duration: 0.35)) { stagePoint = l.critterCenter(feetAt: l.cushion) }
+        try? await Task.sleep(for: .seconds(0.4))
+        await bounceOnCushion(alone: alone)
+    }
+
+    /// Bounces higher and higher, standing on the cushion. `stageBusy` is already set.
+    private func bounceOnCushion(alone: Bool) async {
+        let l = lastLayout
         let rest = l.critterCenter(feetAt: l.cushion)
         let sunk = CGPoint(x: rest.x, y: rest.y + BouncyCushion.sink)
-        stagePoint = l.petCenter
-        withAnimation(.spring(duration: 0.35)) { stagePoint = rest }
-        try? await Task.sleep(for: .seconds(0.4))
         for (index, height) in [90.0, 150, 220, 260].enumerated() {
             guard stillPlaying(alone: alone, .bouncing) else { return endStage() }
             withAnimation(.easeOut(duration: 0.1)) {
@@ -1113,7 +1132,12 @@ struct HomeView: View {
         DragGesture(minimumDistance: 0, coordinateSpace: .named("room"))
             .onChanged { value in
                 let point = value.location
-                if !petting { noteTouch() }
+                if carrying { return }
+                if !petting {
+                    noteTouch()
+                    // Hold the view still while you touch the sötis.
+                    camera.camera.jump(toX: camera.camera.x)
+                }
                 petting = true
                 busyUntil = Date().addingTimeInterval(4)
                 lookPoint = point
@@ -1129,6 +1153,13 @@ struct HomeView: View {
                 }
             }
             .onEnded { value in
+                if carrying {
+                    petting = false
+                    lastDragPoint = nil
+                    lookPoint = nil
+                    strokeDistance = 0
+                    return drop(at: value.location)
+                }
                 if hypot(value.translation.width, value.translation.height) < 8 {
                     poke()
                 }
@@ -1138,6 +1169,135 @@ struct HomeView: View {
                 lookPoint = nil
                 strokeDistance = 0
             }
+    }
+
+    // MARK: Picking it up
+
+    /// Hold a finger still on the sötis for a moment and it is lifted up; then drag it anywhere.
+    private func pickUpGesture(center: CGPoint) -> some Gesture {
+        LongPressGesture(minimumDuration: Self.holdToLift, maximumDistance: 14)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("room")))
+            .onChanged { value in
+                switch value {
+                case .first:
+                    break
+                case .second(true, let drag):
+                    if !carrying, drag == nil { pickUp(at: CGPoint(x: center.x, y: center.y - 95)) }
+                    if let drag {
+                        if !carrying { pickUp(at: drag.location) }
+                        carry(to: drag.location)
+                    }
+                default:
+                    break
+                }
+            }
+            .onEnded { value in
+                if case .second(true, let drag?) = value, carrying { drop(at: drag.location) }
+            }
+    }
+
+    static let holdToLift = 0.45
+
+    /// Where the critter hangs when your finger holds it: by the top of its head.
+    private func carried(_ finger: CGPoint) -> CGPoint {
+        CGPoint(x: finger.x, y: finger.y + 95)
+    }
+
+    private func pickUp(at finger: CGPoint) {
+        guard let pet = store.pet, pet.isAlive, !pet.isAsleep, toy == nil, !stageBusy else { return }
+        if solo != nil { endSolo() }
+        carrying = true
+        stageBusy = true
+        busyUntil = .distantFuture
+        Haptics.thump()
+        SoundFX.play(.squeak)
+        moodOverride = (pet.temper(at: store.now) >= .grumpy ? .ignoring : .excited, .distantFuture)
+        say(pet.temper(at: store.now) >= .grumpy ? "Hmpf! Ställ ner mig!" : ["Wiii! Jag flyger!", "Hoppla!", "Vart ska vi?"].randomElement()!)
+        withAnimation(.spring(duration: 0.25)) { stagePoint = carried(finger) }
+    }
+
+    private func carry(to finger: CGPoint) {
+        let target = carried(finger)
+        if let stagePoint {
+            if abs(target.x - stagePoint.x) > 2 { facingRight = target.x > stagePoint.x }
+            withAnimation(.easeOut(duration: 0.15)) { lean = Double(max(-1, min(1, (target.x - stagePoint.x) / 12))) * 14 }
+        }
+        stagePoint = target
+        // Carried to the edge of the screen, the room scrolls along.
+        let onScreen = finger.x - camera.x
+        if onScreen < 130 { camera.camera.pan(by: 16) }
+        if onScreen > DesignCanvas<EmptyView>.designWidth - 130 { camera.camera.pan(by: -16) }
+    }
+
+    /// Let go: it lands on whatever is underneath, or drops gently to the floor.
+    private func drop(at finger: CGPoint) {
+        carrying = false
+        moodOverride = nil
+        withAnimation(.spring) { lean = 0 }
+        busyUntil = Date().addingTimeInterval(3)
+        lastTouch = Date()
+        let l = lastLayout
+        let feet = CGPoint(x: finger.x, y: carried(finger).y + 150 - RoomLayout.groundInset)
+        let cushionTop = CGRect(x: l.cushion.x - 130, y: l.cushion.y - 200, width: 260, height: 250)
+        let platform = CGRect(x: l.slideLadderX - 60, y: l.slideTop.y - 220, width: 200, height: 260)
+        let window = CGRect(x: 720, y: l.floorTop - 340, width: 240, height: 250)
+        let bed = CGRect(x: RoomLayout.bedX - 130, y: l.floorTop - 120, width: 260, height: 200)
+        Task {
+            if l.hasPlayCorner, cushionTop.contains(feet) {
+                critterX = l.cushion.x
+                withAnimation(.easeIn(duration: 0.3)) { stagePoint = l.critterCenter(feetAt: l.cushion) }
+                try? await Task.sleep(for: .seconds(0.3))
+                await bounceOnCushion(alone: false)
+            } else if l.hasPlayCorner, platform.contains(feet) {
+                withAnimation(.easeIn(duration: 0.3)) { stagePoint = l.critterCenter(feetAt: CGPoint(x: l.slideLadderX + 90, y: l.slideTop.y)) }
+                try? await Task.sleep(for: .seconds(0.35))
+                await rideSlide(alone: false)
+            } else if window.contains(feet) {
+                sitInWindowYourself(at: finger.x)
+            } else if bed.contains(feet), let pet = store.pet, pet.needs.energy < 95 {
+                await fall(to: RoomLayout.bedX, from: feet)
+                if store.perform({ state, now in state.pet?.goToSleep(at: now) ?? false }) {
+                    withAnimation { bubble = nil }
+                }
+            } else {
+                await fall(to: min(max(finger.x, 140), l.size.width - 140), from: feet)
+                say(["Hoppsan!", "Här är bra!", "Tack för skjutsen!"].randomElement()!, chatty: true)
+            }
+        }
+    }
+
+    /// Drops down onto the floor and lands with a little squash.
+    private func fall(to x: CGFloat, from feet: CGPoint) async {
+        let l = lastLayout
+        let height = max(0, l.feetY - feet.y)
+        let time = 0.18 + Double(height) / 1400
+        critterX = x
+        withAnimation(.easeIn(duration: time)) { stagePoint = l.critterCenter(feetAt: CGPoint(x: x, y: l.feetY)) }
+        try? await Task.sleep(for: .seconds(time))
+        Haptics.thump()
+        SoundFX.play(.bounce)
+        stagePoint = nil
+        stageBusy = false
+        withAnimation(.spring(duration: 0.15)) { hop = true }
+        try? await Task.sleep(for: .milliseconds(150))
+        withAnimation(.spring(duration: 0.3, bounce: 0.5)) { hop = false }
+    }
+
+    /// Put it in the window and it settles down there with a book (or the stars), until you lift it out.
+    private func sitInWindowYourself(at x: CGFloat) {
+        critterX = min(max(x, 760), 900)
+        stagePoint = nil
+        stageBusy = false
+        facingRight = true
+        withAnimation(.spring(duration: 0.4, bounce: 0.3)) { perch = 1 }
+        solo = DayPhase(date: store.now).isDark ? .stargazing : .reading
+        busyUntil = Date().addingTimeInterval(25)
+        say(solo == .reading ? "Åh, en bok! Tack!" : "Vad fint det är ute!")
+        let placed = solo
+        Task {
+            try? await Task.sleep(for: .seconds(25))
+            if solo == placed, perch > 0 { endSolo() }
+        }
     }
 
     private func stroke(at point: CGPoint) {

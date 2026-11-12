@@ -9,7 +9,7 @@ final class TemperAndSoloUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .landscapeLeft
         app = XCUIApplication()
-        app.launchArguments = ["-resetSave", "YES", "-demoPet", "YES"]
+        app.launchArguments = ["-muted", "YES", "-resetSave", "YES", "-demoPet", "YES"]
         app.launch()
     }
 

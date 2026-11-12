@@ -162,6 +162,14 @@ public struct GameState: Codable, Equatable, Sendable {
         return result
     }
 
+    /// Buy something and eat it on the spot, like an ice cream from the park kiosk.
+    /// Nil if you can't afford it (nothing is spent then).
+    public mutating func buyAndEat(_ itemID: String, now: Date) -> FeedResult? {
+        guard Catalog.item(itemID)?.foodEffect != nil, let pet, pet.isAlive, !pet.isAsleep else { return nil }
+        guard buy(itemID) == .bought else { return nil }
+        return feed(itemID, now: now)
+    }
+
     public mutating func refillWater(now: Date) -> Bool {
         guard case .water(let amount) = Catalog.item("water")?.kind, var pet, pet.isAlive, !pet.isAsleep, count(of: "water") > 0 else { return false }
         _ = consume("water")

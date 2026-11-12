@@ -8,7 +8,7 @@ final class ParkUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .landscapeLeft
         app = XCUIApplication()
-        app.launchArguments = ["-resetSave", "YES", "-demoPet", "YES", "-screen", "park"]
+        app.launchArguments = ["-muted", "YES", "-resetSave", "YES", "-demoPet", "YES", "-screen", "park"]
         app.launch()
     }
 

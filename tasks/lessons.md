@@ -24,3 +24,6 @@
 - A walk animated with `withAnimation` sets the final x at once. Anything that tracks the critter while it moves (the camera) needs the interpolated position (`stroll`).
 - In XCUITest, `element.tap()` silently missed buttons in a `.position`ed overlay, though the element said it was hittable. Coordinate taps (`element.coordinate(withNormalizedOffset: 0.5, 0.5).tap()`) behave like fingers. When a tap "does nothing", count taps in the app before blaming the app logic.
 - Menus must never cover the sötis: `MenusClearUITests` checks the needs strip, dock, fridge and play pill against the critter's body frame.
+- A `DragGesture(minimumDistance: 0)` next to a double-tap gesture doesn't get its first event until the finger moves, so a "hold still" timer started from it never fires. Use `LongPressGesture(...).sequenced(before: DragGesture(...))` for press-and-hold.
+- Before driving the UI to something, make sure it's on screen: the camera follows the sötis and can scroll the target away.
+- UI tests launch with `-muted YES`.

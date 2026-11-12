@@ -43,17 +43,23 @@ public struct ParkFetch: Sendable {
     public struct Layout: Sendable {
         public var groundY: Double
         public var hand: Point2
+        /// Where your sötis can walk: the whole park.
         public var minX: Double
         public var maxX: Double
+        /// Where you can throw: the meadow.
+        public var throwMinX: Double
+        public var throwMaxX: Double
         public var friendX: Double
         /// How far above the ground a critter catches the ball.
         public var catchHeight: Double
 
-        public init(groundY: Double, hand: Point2, minX: Double, maxX: Double, friendX: Double, catchHeight: Double) {
+        public init(groundY: Double, hand: Point2, minX: Double, maxX: Double, throwMinX: Double? = nil, throwMaxX: Double? = nil, friendX: Double, catchHeight: Double) {
             self.groundY = groundY
             self.hand = hand
             self.minX = minX
             self.maxX = maxX
+            self.throwMinX = throwMinX ?? minX
+            self.throwMaxX = throwMaxX ?? maxX
             self.friendX = friendX
             self.catchHeight = catchHeight
         }
@@ -120,13 +126,13 @@ public struct ParkFetch: Sendable {
         }
     }
 
-    private var throwMaxX: Double { friendJoined ? layout.friendX - Self.friendGap : layout.maxX }
+    private var throwMaxX: Double { friendJoined ? layout.friendX - Self.friendGap : layout.throwMaxX }
 
     /// Throw toward a spot on the field. Your sötis gets there in time, always.
     @discardableResult
     public mutating func throwBall(towardX x: Double, at t: Double) -> Bool {
         guard canThrow else { return false }
-        let targetX = min(throwMaxX, max(layout.minX, x))
+        let targetX = min(throwMaxX, max(layout.throwMinX, x))
         let to = Point2(targetX, layout.groundY - layout.catchHeight)
         let runTime = abs(targetX - petX) / Self.runSpeed
         petTargetX = targetX
@@ -147,6 +153,12 @@ public struct ParkFetch: Sendable {
     /// Walk your sötis somewhere, e.g. to a mound to dig.
     public mutating func walkPet(to x: Double) {
         petTargetX = min(layout.maxX, max(layout.minX, x))
+    }
+
+    /// Put your sötis straight down somewhere, e.g. at the bottom of the slide.
+    public mutating func placePet(at x: Double) {
+        petX = min(layout.maxX, max(layout.minX, x))
+        petTargetX = petX
     }
 
     public func isRunning(_ player: Player) -> Bool {

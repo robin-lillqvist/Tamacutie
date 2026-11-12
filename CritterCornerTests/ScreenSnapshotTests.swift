@@ -74,16 +74,22 @@ final class ScreenSnapshotTests: XCTestCase {
     func testMarket() throws { try render("market", MarketView()) }
     func testBath() throws { try render("bath", BathView()) }
     func testPark() throws { try render("park", ParkView()) }
+    /// The whole wide park at once: meadow, playground, pond.
+    func testWholePark() throws {
+        let size = CGSize(width: 1194 * Rules.parkScreens, height: 834)
+        try render("park-whole", ParkBackdrop(size: size), size: size)
+    }
+
     func testParkDig() throws { try render("park-dig", ParkView(game: .dig)) }
 
-    /// Every dig mound is fully on screen and none hides behind the dock, on each iPad size.
+    /// Every dig mound sits high enough that the dock never hides it, wherever you scroll, on each iPad size.
     func testDigMoundsAreNotBehindTheDock() {
         for size in [CGSize(width: 1180, height: 820), CGSize(width: 1194, height: 834), CGSize(width: 1133, height: 744), CGSize(width: 1366, height: 1024)] {
             let dock = ParkView.dockFrame(in: size)
             for spot in ParkView.moundSpots {
-                let mound = CGRect(x: size.width * spot.x - ParkView.moundSize.width / 2, y: size.height * spot.y - ParkView.moundSize.height / 2, width: ParkView.moundSize.width, height: ParkView.moundSize.height)
-                XCTAssertFalse(mound.intersects(dock), "mound at \(spot) is behind the dock on \(size)")
-                XCTAssertTrue(CGRect(origin: .zero, size: size).contains(mound), "mound at \(spot) is off screen on \(size)")
+                let bottom = size.height * spot.y + ParkView.moundSize.height / 2
+                XCTAssertLessThan(bottom, dock.minY, "mound at \(spot) can end up behind the dock on \(size)")
+                XCTAssertLessThan(spot.x + ParkView.moundSize.width / 2, 1194 * Rules.parkScreens, "mound at \(spot) is outside the park")
             }
         }
     }

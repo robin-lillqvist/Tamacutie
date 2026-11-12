@@ -10,7 +10,7 @@ final class BathUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .landscapeLeft
         app = XCUIApplication()
-        app.launchArguments = ["-resetSave", "YES", "-demoPet", "YES", "-screen", "bath"]
+        app.launchArguments = ["-muted", "YES", "-resetSave", "YES", "-demoPet", "YES", "-screen", "bath"]
         app.launch()
         let frame = app.windows.firstMatch.frame
         designHeight = frame.height * 1194 / frame.width

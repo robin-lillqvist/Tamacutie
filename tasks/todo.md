@@ -54,6 +54,8 @@
 - [x] Camera (CritterKit) + ScrollingWorld + wide home room + decor migration
 - [x] Home play corner: slide, xylophone, bouncy cushion + solo activities
 - [x] Menus never cover the sötis: slim needs strip, fridge under the top bar, play pill on top, critter above the dock
-- [ ] Wide park in zones: swings, slide, sandbox, ducks, butterflies, ice-cream kiosk; mounds across the park
+- [x] Wide park in zones: swings, slide, sandbox, ducks, butterflies, ice-cream kiosk; mounds across the park
+- [x] Pick up and carry the sötis (hold, drag, drop onto things) at home and in the park
+- [x] Mute switch; UI tests run muted
 - [ ] Scrolling shop shelf
 - [ ] Deploy silently to both iPads
